@@ -805,6 +805,7 @@ export default function EmployeeDetailPage() {
                       { label: "Nationality", value: employee.nationality || "—" },
                       { label: "Personal Email", value: employee.personalEmail || "—" },
                       { label: "Marital Status", value: employee.maritalStatus || "—" },
+                      { label: "Designation", value: employee.designation || "—" },
                       { label: "Date of Joining", value: employee.dateOfJoining || "—" },
                     ].map((item) => (
                       <div key={item.label} className="border border-slate-200 rounded-lg p-3 bg-slate-50">

@@ -55,10 +55,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Forbidden - HR access required" }, { status: 403 });
         }
 
-        const { name, email, joiningYear, serialNumber } = await req.json();
+        const { name, email, joiningYear, serialNumber, designation, dateOfJoining } = await req.json();
 
-        if (!name || !email || !joiningYear || !serialNumber) {
-            return NextResponse.json({ message: "Name, email, joining year, and serial number are required" }, { status: 400 });
+        if (!name || !email || !joiningYear || !serialNumber || !designation || !dateOfJoining) {
+            return NextResponse.json({ message: "Name, email, joining year, serial number, designation, and joining date are required" }, { status: 400 });
         }
 
         const emailError = validateEmail(email);
@@ -116,6 +116,8 @@ export async function POST(req: Request) {
             status: "pending",
             organizationId: hrUser.organizationId,
             avatar: `https://robohash.org/${email}`,
+            designation: designation.trim(),
+            dateOfJoining: dateOfJoining,
         });
 
         // Send employee pre-registration onboarding email

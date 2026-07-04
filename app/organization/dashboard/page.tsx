@@ -31,6 +31,8 @@ export default function OrganizationDashboard() {
   const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
   const [empJoiningYear, setEmpJoiningYear] = useState("");
   const [empSerialNumber, setEmpSerialNumber] = useState("");
+  const [empDesignation, setEmpDesignation] = useState("");
+  const [empJoiningDate, setEmpJoiningDate] = useState("");
   const [addingEmployee, setAddingEmployee] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
   const [expandedEmpId, setExpandedEmpId] = useState<string | null>(null);
@@ -82,8 +84,8 @@ export default function OrganizationDashboard() {
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmployeeName.trim() || !newEmployeeEmail.trim() || !empJoiningYear.trim() || !empSerialNumber.trim()) {
-      toast.error("Please enter Name, Email, Joining Year, and Serial Number");
+    if (!newEmployeeName.trim() || !newEmployeeEmail.trim() || !empJoiningYear.trim() || !empSerialNumber.trim() || !empDesignation.trim() || !empJoiningDate.trim()) {
+      toast.error("Please enter all fields: Name, Email, Joining Year, Serial Number, Designation, and Joining Date");
       return;
     }
 
@@ -97,16 +99,20 @@ export default function OrganizationDashboard() {
           email: newEmployeeEmail,
           joiningYear: empJoiningYear,
           serialNumber: empSerialNumber,
+          designation: empDesignation,
+          dateOfJoining: empJoiningDate,
         }),
       });
 
       const data = await res.json();
       if (res.ok) {
-        toast.success("Employee added successfully! 📧 They've been sent an invitation email - remind them to check their spam folder if they don't see it.");
+        toast.success("Employee added successfully! They have been sent an invitation email - remind them to check their spam folder if they don't see it.");
         setNewEmployeeName("");
         setNewEmployeeEmail("");
         setEmpJoiningYear("");
         setEmpSerialNumber("");
+        setEmpDesignation("");
+        setEmpJoiningDate("");
         fetchEmployees();
       } else {
         toast.error(data.message || "Failed to add employee");
@@ -274,6 +280,26 @@ export default function OrganizationDashboard() {
                         onChange={(e) => setEmpSerialNumber(e.target.value)}
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="empDesignation" className="text-slate-900 font-semibold text-xs">Designation</Label>
+                    <Input
+                      id="empDesignation"
+                      placeholder="e.g. Senior Developer"
+                      className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs"
+                      value={empDesignation}
+                      onChange={(e) => setEmpDesignation(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="empJoiningDate" className="text-slate-900 font-semibold text-xs">Joining Date</Label>
+                    <Input
+                      id="empJoiningDate"
+                      type="date"
+                      className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs"
+                      value={empJoiningDate}
+                      onChange={(e) => setEmpJoiningDate(e.target.value)}
+                    />
                   </div>
                   <button
                     type="submit"
