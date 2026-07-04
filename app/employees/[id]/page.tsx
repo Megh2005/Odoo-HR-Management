@@ -684,7 +684,7 @@ export default function EmployeeDetailPage() {
                   <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">
                     Base Salary
                   </h3>
-                  <SalaryField label="Basic Salary" field="basic" type="base" required placeholder="e.g. 50000" />
+                  <SalaryField label="Basic Salary" field="basic" type="base" required placeholder="e.g. 50000" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
                 </div>
 
                 {/* Credits */}
@@ -693,10 +693,10 @@ export default function EmployeeDetailPage() {
                     Allowances &amp; Credits (% of Basic)
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <SalaryField label="HRA (House Rent Allowance)" field="hra" type="credit" placeholder="e.g. 20" />
-                    <SalaryField label="DA (Dearness Allowance)" field="da" type="credit" placeholder="e.g. 10" />
-                    <SalaryField label="Bonus" field="bonus" type="credit" placeholder="e.g. 5" />
-                    <SalaryField label="Other Allowances" field="otherAllowances" type="credit" placeholder="e.g. 5" />
+                    <SalaryField label="HRA (House Rent Allowance)" field="hra" type="credit" placeholder="e.g. 20" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
+                    <SalaryField label="DA (Dearness Allowance)" field="da" type="credit" placeholder="e.g. 10" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
+                    <SalaryField label="Bonus" field="bonus" type="credit" placeholder="e.g. 5" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
+                    <SalaryField label="Other Allowances" field="otherAllowances" type="credit" placeholder="e.g. 5" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
                   </div>
                 </div>
 
@@ -706,9 +706,9 @@ export default function EmployeeDetailPage() {
                     Deductions &amp; Debits (% of Basic)
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <SalaryField label="PF (Provident Fund)" field="pf" type="debit" placeholder="e.g. 12" />
-                    <SalaryField label="Income Tax" field="tax" type="debit" placeholder="e.g. 10" />
-                    <SalaryField label="Other Deductions" field="otherDeductions" type="debit" placeholder="e.g. 2" />
+                    <SalaryField label="PF (Provident Fund)" field="pf" type="debit" placeholder="e.g. 12" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
+                    <SalaryField label="Income Tax" field="tax" type="debit" placeholder="e.g. 10" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
+                    <SalaryField label="Other Deductions" field="otherDeductions" type="debit" placeholder="e.g. 2" salaryForm={salaryForm} setSalaryForm={setSalaryForm} />
                   </div>
                 </div>
 
