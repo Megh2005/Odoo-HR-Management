@@ -433,7 +433,7 @@ export default function EmployeeDetailPage() {
 
                 {/* Working hours */}
                 <span className="text-sm font-bold text-slate-700 text-center tabular-nums whitespace-nowrap">
-                  {rec?.workingHours > 0 ? `${rec.workingHours.toFixed(1)}h` : <span className="text-slate-300">—</span>}
+                  {rec?.workingHours > 0 ? `${rec.workingHours.toFixed(1)}` : <span className="text-slate-300">—</span>}
                 </span>
               </div>
             );

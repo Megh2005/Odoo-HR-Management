@@ -62,13 +62,13 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const profileRes = await fetch("/api/profile");
+      const profileRes = await fetch("/api/profile", { cache: "no-store" });
       if (profileRes.ok) {
         const pData = await profileRes.json();
         setUserData(pData);
 
         if (pData.role === "hr") {
-          const empRes = await fetch("/api/employees");
+          const empRes = await fetch("/api/employees", { cache: "no-store" });
           if (empRes.ok) {
             const eData = await empRes.json();
             setEmployees(eData);
@@ -78,8 +78,8 @@ export default function Dashboard() {
             setCheckInEnd(pData.organizationId.checkInEnd || "11:00");
           }
         } else {
-          // Employee - fetch attendance logs
-          fetchAttendance();
+          // Employee - fetch attendance logs immediately
+          await fetchAttendance();
           
           // Open AI Setup prompt if they do not have a Bio set up
           if (!pData.bio) {
@@ -117,7 +117,20 @@ export default function Dashboard() {
     }
   }, [status, session]);
 
-  // Live Check-in Session Timer - Update every 2 minutes and save to database
+  // Poll attendance data every 10 seconds for real-time updates
+  useEffect(() => {
+    if (!userData || userData.role === "hr") {
+      return; // Only for employees
+    }
+
+    const pollInterval = setInterval(() => {
+      fetchAttendance();
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [userData]);
+
+  // Live Check-in Session Timer - Update every 1 minute and save to database
   useEffect(() => {
     if (!todayRecord || !todayRecord.checkIn || todayRecord.checkOut) {
       setSessionTime("");
@@ -136,13 +149,13 @@ export default function Dashboard() {
       const formatted = `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
       setSessionTime(formatted);
 
-      // Calculate working hours in decimal format
-      const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
+      // Calculate working hours in decimal format (e.g., 0.1, 1.25, 8.5)
+      const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
       
       return totalWorkingHours;
     };
 
-    // Function to save working hours to database every 2 minutes
+    // Function to save working hours to database every 30 seconds (increased frequency)
     const saveWorkingHours = async (workingHours: number) => {
       try {
         await fetch("/api/attendance/update-hours", {
@@ -167,13 +180,14 @@ export default function Dashboard() {
       updateSessionTimer();
     }, 1000);
 
-    // Save working hours to database every 2 minutes (120000 ms)
+    // Save working hours to database every 30 seconds (increased from 60 seconds for more frequent updates)
     const saveInterval = setInterval(() => {
       const checkInTime = new Date(todayRecord.checkIn).getTime();
       const diffMs = Date.now() - checkInTime;
-      const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
+      // Keep precision to 1 decimal place (0.1, 0.2, etc.)
+      const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
       saveWorkingHours(totalWorkingHours);
-    }, 120000); // 2 minutes
+    }, 30000); // 30 seconds (increased frequency)
 
     return () => {
       clearInterval(timerInterval);
@@ -197,7 +211,9 @@ export default function Dashboard() {
         // Immediately update state with the new record
         setTodayRecord(data.record);
         // Also refetch all attendance to ensure latest data
-        fetchAttendance();
+        setTimeout(() => {
+          fetchAttendance();
+        }, 500); // Small delay to ensure server has persisted
       } else {
         toast.error(data.message || "Action failed");
       }
@@ -918,7 +934,7 @@ function EmployeeTabs({
               </div>
               <div className="bg-white/95 border-2 border-slate-900 p-4 rounded-xl text-center shadow">
                 <Clock className="h-6 w-6 text-sky-900 mx-auto mb-1.5" />
-                <h4 className="text-xl font-black text-slate-900">{avgHours}h</h4>
+                <h4 className="text-xl font-black text-slate-900">{avgHours}</h4>
                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Avg Daily Hours</p>
               </div>
             </div>

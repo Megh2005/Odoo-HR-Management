@@ -32,7 +32,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ 
             message: "Working hours updated successfully", 
             record: updatedRecord 
-        }, { status: 200 });
+        }, { 
+            status: 200,
+            headers: {
+                "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            }
+        });
 
     } catch (error: any) {
         console.error("Update working hours error:", error);

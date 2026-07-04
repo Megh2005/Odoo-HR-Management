@@ -89,7 +89,12 @@ export async function GET(req: Request) {
         return NextResponse.json({
             records: allMonthRecords,
             today: todayRecord || null
-        }, { status: 200 });
+        }, { 
+            status: 200,
+            headers: {
+                "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            }
+        });
 
     } catch (error: any) {
         console.error("Fetch attendance error:", error);
@@ -160,7 +165,12 @@ export async function POST(req: Request) {
                 status: "present"
             });
 
-            return NextResponse.json({ message: "Checked in successfully", record }, { status: 201 });
+            return NextResponse.json({ message: "Checked in successfully", record }, { 
+                status: 201,
+                headers: {
+                    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+                }
+            });
         } else {
             // Checkout
             if (!record) {
@@ -181,7 +191,12 @@ export async function POST(req: Request) {
                 workingHours: hours
             });
 
-            return NextResponse.json({ message: "Checked out successfully", record: updatedRecord }, { status: 200 });
+            return NextResponse.json({ message: "Checked out successfully", record: updatedRecord }, { 
+                status: 200,
+                headers: {
+                    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+                }
+            });
         }
 
     } catch (error: any) {
