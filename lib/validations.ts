@@ -1,6 +1,11 @@
 export const validateEmail = (email: string) => {
-    if (!email || !email.endsWith("@gmail.com")) {
-        return "Email must be a valid Gmail address (@gmail.com)";
+    if (!email) {
+        return "Email is required";
+    }
+    // Basic email format validation - accepts any domain
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return "Please enter a valid email address";
     }
     return null;
 };
