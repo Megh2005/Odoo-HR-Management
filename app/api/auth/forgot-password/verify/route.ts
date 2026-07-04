@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
+import { getUserByEmail } from "@/lib/services";
 import { transporter } from "@/lib/mailer";
 import crypto from "crypto";
 
@@ -15,10 +14,8 @@ export async function POST(req: Request) {
             );
         }
 
-        await connectToDatabase();
-
         // Check if user exists with matching name and email
-        const user = await User.findOne({ email });
+        const user = await getUserByEmail(email);
 
         if (!user) {
             return NextResponse.json(
@@ -80,7 +77,7 @@ export async function POST(req: Request) {
       <h1>Tropical Coders</h1>
     </div>
     <div class="content">
-      <p class="greeting">Hello, ${name}</p>
+      <p class="greeting">Hello, ${user.name}</p>
       <p class="instruction">We received a request to reset your password. Use the verification code below to proceed with your request.</p>
       
       <div class="otp-box">

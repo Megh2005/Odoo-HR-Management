@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db";
-import Organization from "@/models/Organization";
+import { getOrganizationsList } from "@/lib/services";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    await connectToDatabase();
-    const organizations = await Organization.find({}, "name _id").lean();
+    const organizations = await getOrganizationsList();
     return NextResponse.json(organizations);
   } catch (error: any) {
     console.error("List organizations error:", error);

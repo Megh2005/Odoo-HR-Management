@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
-import Organization from "@/models/Organization";
-import User from "@/models/User";
+import { getUserByEmail, getOrganizationById, updateOrganization } from "@/lib/services";
 
 export async function POST(req: Request) {
     try {
@@ -24,26 +22,25 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Invalid time format. Please use HH:MM." }, { status: 400 });
         }
 
-        await connectToDatabase();
-        
         // Find HR user
-        const hrUser = await User.findOne({ email: session.user.email });
+        const hrUser = await getUserByEmail(session.user.email);
         if (!hrUser || !hrUser.organizationId) {
             return NextResponse.json({ message: "HR has no active organization" }, { status: 400 });
         }
 
-        const org = await Organization.findById(hrUser.organizationId);
+        const org = await getOrganizationById(hrUser.organizationId);
         if (!org) {
             return NextResponse.json({ message: "Organization not found" }, { status: 404 });
         }
 
-        org.checkInStart = checkInStart;
-        org.checkInEnd = checkInEnd;
-        await org.save();
+        const updatedOrg = await updateOrganization(org.id, {
+            checkInStart,
+            checkInEnd,
+        });
 
         return NextResponse.json({
             message: "Attendance check-in window updated successfully",
-            organization: org
+            organization: updatedOrg
         }, { status: 200 });
 
     } catch (error: any) {

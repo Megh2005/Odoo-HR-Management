@@ -68,7 +68,7 @@ export default function Home() {
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-slate-900 tracking-tight leading-tight">
                 Manage Your Workforce with <br />
-                <span className="bg-gradient-to-r from-sky-900 to-sky-700 bg-clip-text text-transparent">
+                <span className="bg-linear-to-r from-sky-900 to-sky-700 bg-clip-text text-transparent">
                   HRNode
                 </span>
               </h1>
@@ -123,7 +123,7 @@ export default function Home() {
                     className="group p-6 rounded-xl border-2 border-slate-900 bg-white/80 hover:bg-sky-50/80 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-sky-100 border border-sky-300 flex items-center justify-center group-hover:bg-sky-900 group-hover:border-sky-900 transition-all duration-200">
+                      <div className="shrink-0 w-12 h-12 rounded-lg bg-sky-100 border border-sky-300 flex items-center justify-center group-hover:bg-sky-900 group-hover:border-sky-900 transition-all duration-200">
                         <Icon className="w-6 h-6 text-sky-900 group-hover:text-white transition-all duration-200" />
                       </div>
                       <div className="flex-1 text-left">

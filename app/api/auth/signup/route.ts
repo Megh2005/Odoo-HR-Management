@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateEmail, validatePassword } from "@/lib/validations";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
-import Organization from "@/models/Organization";
-import { hashPassword } from "@/lib/services";
+import { getUserByEmail, createUser, updateUser, hashPassword } from "@/lib/services";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
@@ -45,8 +42,6 @@ export async function POST(req: Request) {
             }
         }
 
-        await connectToDatabase();
-
         // Verify OTP Hash
         const [signature, expiresAt] = hash.split(".");
         if (Date.now() > parseInt(expiresAt)) {
@@ -70,7 +65,7 @@ export async function POST(req: Request) {
         const hashedPassword = password ? await hashPassword(password) : undefined;
 
         if (role === "employee") {
-            const existingUser = await User.findOne({ email });
+            const existingUser = await getUserByEmail(email);
             if (!existingUser) {
                 return NextResponse.json(
                     { message: "No employee account found for this email. Contact your HR." },
@@ -91,19 +86,20 @@ export async function POST(req: Request) {
                 );
             }
 
-            existingUser.password = hashedPassword;
-            existingUser.status = "active";
-            if (gender) existingUser.gender = gender;
-            if (avatar) existingUser.avatar = avatar;
-            await existingUser.save();
+            const updatedUser = await updateUser(existingUser.id, {
+                password: hashedPassword,
+                status: "active",
+                ...(gender && { gender }),
+                ...(avatar && { avatar }),
+            });
 
             return NextResponse.json(
-                { message: "Employee account activated successfully", user: existingUser },
+                { message: "Employee account activated successfully", user: updatedUser },
                 { status: 200 }
             );
         } else {
             // HR flow
-            const existingUser = await User.findOne({ email });
+            const existingUser = await getUserByEmail(email);
             if (existingUser) {
                 return NextResponse.json(
                     { message: "User already exists with this email" },
@@ -119,7 +115,7 @@ export async function POST(req: Request) {
             }
 
             // Create HR User
-            const newUser = new User({
+            const newUser = await createUser({
                 name,
                 email,
                 password: hashedPassword,
@@ -128,8 +124,6 @@ export async function POST(req: Request) {
                 avatar: avatar || `https://robohash.org/${email}`,
                 gender: gender || "male",
             });
-
-            await newUser.save();
 
             return NextResponse.json(
                 { message: "HR registered successfully", user: newUser },

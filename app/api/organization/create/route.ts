@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
-import Organization from "@/models/Organization";
+import { 
+    getUserByEmail, 
+    updateUser, 
+    getOrganizationByCreatedBy, 
+    createOrganization 
+} from "@/lib/services";
 import { sendOrganizationCreationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
@@ -13,8 +16,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        await connectToDatabase();
-        const hrUser = await User.findOne({ email: session.user.email });
+        const hrUser = await getUserByEmail(session.user.email);
         if (!hrUser || hrUser.role !== "hr") {
             return NextResponse.json({ message: "Forbidden - HR access required" }, { status: 403 });
         }
@@ -27,10 +29,9 @@ export async function POST(req: Request) {
             );
         }
 
-        const existingOrg = await Organization.findOne({ createdBy: hrUser._id });
+        const existingOrg = await getOrganizationByCreatedBy(hrUser.id);
         if (existingOrg) {
-            hrUser.organizationId = existingOrg._id;
-            await hrUser.save();
+            const updatedHr = await updateUser(hrUser.id, { organizationId: existingOrg.id });
             return NextResponse.json(
                 { message: "Organization already exists. Linked successfully.", organization: existingOrg },
                 { status: 200 }
@@ -44,22 +45,19 @@ export async function POST(req: Request) {
         }
 
         // Create new organization
-        const newOrg = new Organization({
+        const newOrg = await createOrganization({
             name: name.trim(),
             logo: logo || "",
             address: address || "",
             additionalInfo: additionalInfo || {},
-            createdBy: hrUser._id,
+            createdBy: hrUser.id,
         });
 
-        await newOrg.save();
-
         // Update the HR User's organizationId
-        hrUser.organizationId = newOrg._id;
-        await hrUser.save();
+        const updatedHrUser = await updateUser(hrUser.id, { organizationId: newOrg.id });
 
         // Dispatch details email to HR Officer
-        sendOrganizationCreationEmail(newOrg, hrUser).catch(err => {
+        sendOrganizationCreationEmail(newOrg, updatedHrUser).catch(err => {
             console.error("Failed to send organization creation email:", err);
         });
 

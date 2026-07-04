@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
+import { getUserByEmail } from "@/lib/services";
 import { transporter } from "@/lib/mailer";
 import crypto from "crypto";
 
@@ -15,9 +14,7 @@ export async function POST(req: Request) {
             );
         }
 
-        await connectToDatabase();
-
-        const existingUser = await User.findOne({ email });
+        const existingUser = await getUserByEmail(email);
 
         if (role === "employee") {
             if (!existingUser) {
@@ -50,7 +47,7 @@ export async function POST(req: Request) {
                     { status: 400 }
                 );
             }
-            if (existingUser.organizationId?.toString() !== organizationId.toString()) {
+            if (existingUser.organizationId !== organizationId) {
                 return NextResponse.json(
                     { message: "This email is not registered under the selected organization." },
                     { status: 400 }

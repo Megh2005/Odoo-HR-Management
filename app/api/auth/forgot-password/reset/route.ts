@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
+import { getUserByEmail, updateUser, hashPassword } from "@/lib/services";
 import crypto from "crypto";
-import { hashPassword } from "@/lib/services";
 
 export async function POST(req: Request) {
     try {
@@ -45,17 +43,19 @@ export async function POST(req: Request) {
             );
         }
 
-        await connectToDatabase();
+        const user = await getUserByEmail(email);
+        if (!user) {
+            return NextResponse.json(
+                { message: "User not found" },
+                { status: 404 }
+            );
+        }
 
         // Hash new password
         const hashedPassword = await hashPassword(newPassword);
 
         // Update user password
-        await User.findOneAndUpdate(
-            { email },
-            { password: hashedPassword },
-            { new: true }
-        );
+        await updateUser(user.id, { password: hashedPassword });
 
         return NextResponse.json(
             { message: "Password reset successfully" },

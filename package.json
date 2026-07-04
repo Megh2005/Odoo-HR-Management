@@ -10,7 +10,6 @@
     "format": "biome format --write"
   },
   "dependencies": {
-    "@auth/mongodb-adapter": "^3.11.1",
     "@google/generative-ai": "^0.24.1",
     "@imagekit/nodejs": "^7.9.1",
     "@types/jspdf": "^2.0.0",
@@ -25,8 +24,6 @@
     "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
-    "mongodb": "^7.4.0",
-    "mongoose": "^9.2.1",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
     "next-themes": "^0.4.6",

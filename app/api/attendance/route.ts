@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
-import Attendance from "@/models/Attendance";
-import User from "@/models/User";
-import Organization from "@/models/Organization";
+import { 
+    getUserByEmail, 
+    getOrganizationById, 
+    getAttendanceByUserAndDate, 
+    getAttendanceByUserAndMonth, 
+    createAttendance, 
+    updateAttendance 
+} from "@/lib/services";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +20,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        await connectToDatabase();
-        const user = await User.findOne({ email: session.user.email });
+        const user = await getUserByEmail(session.user.email);
         if (!user) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
@@ -28,14 +31,10 @@ export async function GET(req: Request) {
         const yearMonthPrefix = `${currentYear}-${currentMonth}`;
 
         // Retrieve existing records
-        let records = await Attendance.find({
-            userId: user._id,
-            date: { $regex: `^${yearMonthPrefix}` }
-        }).sort({ date: 1 });
+        let records = await getAttendanceByUserAndMonth(user.id, yearMonthPrefix);
 
         // Today's specific date string
         const todayStr = now.toISOString().split("T")[0];
-        const hasTodayRecord = records.some(r => r.date === todayStr);
 
         // To make the monthly preview look realistic and complete, we auto-fill previous days of the month
         // with mock attendance data if they do not exist.
@@ -60,8 +59,8 @@ export async function GET(req: Request) {
                         date: dayStr,
                         status: "present",
                         workingHours,
-                        checkIn: new Date(currentYear, now.getMonth(), d, 9, Math.floor(Math.random() * 15)),
-                        checkOut: new Date(currentYear, now.getMonth(), d, 17, Math.floor(Math.random() * 15)),
+                        checkIn: new Date(currentYear, now.getMonth(), d, 9, Math.floor(Math.random() * 15)).toISOString(),
+                        checkOut: new Date(currentYear, now.getMonth(), d, 17, Math.floor(Math.random() * 15)).toISOString(),
                         isMock: true
                     });
                 } else {
@@ -114,8 +113,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Invalid action" }, { status: 400 });
         }
 
-        await connectToDatabase();
-        const user = await User.findOne({ email: session.user.email });
+        const user = await getUserByEmail(session.user.email);
         if (!user) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
@@ -123,7 +121,7 @@ export async function POST(req: Request) {
         const now = new Date();
         const todayStr = now.toISOString().split("T")[0];
 
-        let record = await Attendance.findOne({ userId: user._id, date: todayStr });
+        let record = await getAttendanceByUserAndDate(user.id, todayStr);
 
         if (action === "checkin") {
             if (record) {
@@ -132,7 +130,7 @@ export async function POST(req: Request) {
 
             // Verify check-in window settings if organization is linked
             if (user.organizationId) {
-                const org = await Organization.findById(user.organizationId);
+                const org = await getOrganizationById(user.organizationId);
                 if (org) {
                     const startVal = org.checkInStart || "09:00";
                     const endVal = org.checkInEnd || "11:00";
@@ -155,13 +153,12 @@ export async function POST(req: Request) {
                 }
             }
 
-            record = new Attendance({
-                userId: user._id,
+            record = await createAttendance({
+                userId: user.id,
                 date: todayStr,
-                checkIn: now,
+                checkIn: now.toISOString(),
                 status: "present"
             });
-            await record.save();
 
             return NextResponse.json({ message: "Checked in successfully", record }, { status: 201 });
         } else {
@@ -173,18 +170,18 @@ export async function POST(req: Request) {
                 return NextResponse.json({ message: "Already checked out today" }, { status: 400 });
             }
 
-            record.checkOut = now;
-            
             // Calculate working hours
             const checkInTime = new Date(record.checkIn).getTime();
             const checkOutTime = now.getTime();
             const diffMs = checkOutTime - checkInTime;
             const hours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
-            record.workingHours = hours;
 
-            await record.save();
+            const updatedRecord = await updateAttendance(record.id, {
+                checkOut: now.toISOString(),
+                workingHours: hours
+            });
 
-            return NextResponse.json({ message: "Checked out successfully", record }, { status: 200 });
+            return NextResponse.json({ message: "Checked out successfully", record: updatedRecord }, { status: 200 });
         }
 
     } catch (error: any) {

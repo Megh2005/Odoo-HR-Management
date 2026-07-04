@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
+import { getUserByEmail, updateUser } from "@/lib/services";
 import { validatePincode } from "@/lib/pincode-validator";
 import { indianStatesAndCities } from "@/lib/states";
 
@@ -48,22 +47,20 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        await connectToDatabase();
-
-        const user = await User.findOne({ email: session.user.email });
+        const user = await getUserByEmail(session.user.email);
 
         if (!user) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
-        user.state = state;
-        user.city = city;
-        user.pincode = pincode;
-
-        await user.save();
+        const updatedUser = await updateUser(user.id, {
+            state,
+            city,
+            pincode,
+        });
 
         return NextResponse.json(
-            { message: "Profile updated successfully", user },
+            { message: "Profile updated successfully", user: updatedUser },
             { status: 200 }
         );
     } catch (error: any) {

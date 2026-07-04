@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
-import Salary from "@/models/Salary";
+import { 
+    getUserByEmail, 
+    getUserById, 
+    getSalaryByUserIdAndOrgId, 
+    upsertSalary 
+} from "@/lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -19,27 +22,18 @@ export async function GET(
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        await connectToDatabase();
-
-        const hrUser = await User.findOne({ email: session.user.email });
+        const hrUser = await getUserByEmail(session.user.email);
         if (!hrUser || hrUser.role !== "hr" || !hrUser.organizationId) {
             return NextResponse.json({ message: "Forbidden - HR access required" }, { status: 403 });
         }
 
         // Verify the employee belongs to this HR's org
-        const employee = await User.findOne({
-            _id: id,
-            organizationId: hrUser.organizationId,
-            role: "employee",
-        });
-        if (!employee) {
+        const employee = await getUserById(id);
+        if (!employee || employee.organizationId !== hrUser.organizationId || employee.role !== "employee") {
             return NextResponse.json({ message: "Employee not found" }, { status: 404 });
         }
 
-        const salary = await Salary.findOne({
-            userId: id,
-            organizationId: hrUser.organizationId,
-        });
+        const salary = await getSalaryByUserIdAndOrgId(id, hrUser.organizationId);
 
         return NextResponse.json(salary || null, { status: 200 });
     } catch (error: any) {
@@ -60,19 +54,13 @@ export async function POST(
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        await connectToDatabase();
-
-        const hrUser = await User.findOne({ email: session.user.email });
+        const hrUser = await getUserByEmail(session.user.email);
         if (!hrUser || hrUser.role !== "hr" || !hrUser.organizationId) {
             return NextResponse.json({ message: "Forbidden - HR access required" }, { status: 403 });
         }
 
-        const employee = await User.findOne({
-            _id: id,
-            organizationId: hrUser.organizationId,
-            role: "employee",
-        });
-        if (!employee) {
+        const employee = await getUserById(id);
+        if (!employee || employee.organizationId !== hrUser.organizationId || employee.role !== "employee") {
             return NextResponse.json({ message: "Employee not found" }, { status: 404 });
         }
 
@@ -84,8 +72,6 @@ export async function POST(
         }
 
         const salaryData = {
-            userId: id,
-            organizationId: hrUser.organizationId,
             basic: Number(basic),
             hra: Number(hra) || 0,
             da: Number(da) || 0,
@@ -96,11 +82,7 @@ export async function POST(
             otherDeductions: Number(otherDeductions) || 0,
         };
 
-        const salary = await Salary.findOneAndUpdate(
-            { userId: id, organizationId: hrUser.organizationId },
-            salaryData,
-            { upsert: true, new: true }
-        );
+        const salary = await upsertSalary(id, hrUser.organizationId, salaryData);
 
         return NextResponse.json({ message: "Salary structure saved successfully", salary }, { status: 200 });
     } catch (error: any) {

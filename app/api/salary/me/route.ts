@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
-import Salary from "@/models/Salary";
+import { getUserByEmail, getSalaryByUserIdAndOrgId } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +13,16 @@ export async function GET() {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        await connectToDatabase();
-
-        const user = await User.findOne({ email: session.user.email });
+        const user = await getUserByEmail(session.user.email);
         if (!user) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
-        const salary = await Salary.findOne({
-            userId: user._id,
-            organizationId: user.organizationId,
-        });
+        if (!user.organizationId) {
+            return NextResponse.json(null, { status: 200 });
+        }
+
+        const salary = await getSalaryByUserIdAndOrgId(user.id, user.organizationId);
 
         return NextResponse.json(salary || null, { status: 200 });
     } catch (error: any) {

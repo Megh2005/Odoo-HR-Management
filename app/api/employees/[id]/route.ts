@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
+import { getUserByEmail, getUserById } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -18,21 +17,19 @@ export async function GET(
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        await connectToDatabase();
-
-        const hrUser = await User.findOne({ email: session.user.email });
+        const hrUser = await getUserByEmail(session.user.email);
         if (!hrUser || hrUser.role !== "hr" || !hrUser.organizationId) {
             return NextResponse.json({ message: "Forbidden - HR access required" }, { status: 403 });
         }
 
-        const employee = await User.findOne({
-            _id: id,
-            organizationId: hrUser.organizationId,
-            role: "employee",
-        }).select("-password");
+        const employee = await getUserById(id);
 
-        if (!employee) {
+        if (!employee || employee.organizationId !== hrUser.organizationId || employee.role !== "employee") {
             return NextResponse.json({ message: "Employee not found" }, { status: 404 });
+        }
+
+        if (employee.password) {
+            delete employee.password;
         }
 
         return NextResponse.json(employee, { status: 200 });

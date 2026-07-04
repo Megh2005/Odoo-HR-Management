@@ -1,5 +1,4 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
@@ -12,8 +11,10 @@ const firebaseConfig = {
   appId: "1:70515569207:web:c75dae33a285a4fda885b2"
 };
 
-// Initialize Firebase
+// Initialize Firebase (safely for Next.js SSR)
 const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+export default {app, db, auth };
