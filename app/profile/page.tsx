@@ -26,6 +26,7 @@ import {
   CheckCircle,
   Clock,
   Building,
+  Upload,
 } from "lucide-react";
 
 import { indianStatesAndCities } from "@/lib/states";
@@ -84,6 +85,8 @@ export default function ProfilePage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
+  const [empJoiningYear, setEmpJoiningYear] = useState("");
+  const [empSerialNumber, setEmpSerialNumber] = useState("");
   const [addingEmployee, setAddingEmployee] = useState(false);
 
   // States for organization creation form
@@ -92,6 +95,8 @@ export default function ProfilePage() {
   const [orgLogo, setOrgLogo] = useState("");
   const [orgFields, setOrgFields] = useState<{ key: string; value: string }[]>([]);
   const [creatingOrg, setCreatingOrg] = useState(false);
+  const [orgLogoPreview, setOrgLogoPreview] = useState("");
+  const [orgLogoFile, setOrgLogoFile] = useState<File | null>(null);
 
   const addOrgField = () => {
     setOrgFields([...orgFields, { key: "", value: "" }]);
@@ -105,28 +110,17 @@ export default function ProfilePage() {
     setOrgFields(orgFields.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
   };
 
-  const handleOrgLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOrgLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const fileFormData = new FormData();
-    fileFormData.append("file", file);
+    if (file.size > 1024 * 1024) {
+      toast.error("Organization logo must be less than 1MB");
+      return;
+    }
 
-    const promise = fetch("/api/upload-image", {
-      method: "POST",
-      body: fileFormData,
-    }).then(async (res) => {
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to upload logo");
-      setOrgLogo(data.secure_url);
-      return data;
-    });
-
-    await toast.promise(promise, {
-      pending: "Uploading organization logo...",
-      success: "Logo uploaded successfully!",
-      error: "Failed to upload logo",
-    });
+    setOrgLogoFile(file);
+    setOrgLogoPreview(URL.createObjectURL(file));
   };
 
   const handleCreateOrganization = async (e: React.FormEvent) => {
@@ -138,6 +132,26 @@ export default function ProfilePage() {
 
     setCreatingOrg(true);
     try {
+      let uploadedLogoUrl = orgLogo;
+
+      if (orgLogoFile) {
+        const fileFormData = new FormData();
+        fileFormData.append("file", orgLogoFile);
+
+        const uploadRes = await fetch("/api/upload-image", {
+          method: "POST",
+          body: fileFormData,
+        });
+
+        if (!uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          throw new Error(uploadData.message || "Failed to upload logo");
+        }
+
+        const uploadData = await uploadRes.json();
+        uploadedLogoUrl = uploadData.secure_url;
+      }
+
       const additionalInfo: Record<string, string> = {};
       orgFields.forEach((field) => {
         if (field.key.trim() && field.value.trim()) {
@@ -150,7 +164,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: orgName,
-          logo: orgLogo,
+          logo: uploadedLogoUrl,
           address: orgAddress,
           additionalInfo,
         }),
@@ -164,8 +178,8 @@ export default function ProfilePage() {
       } else {
         toast.error(data.message || "Failed to create organization");
       }
-    } catch (error) {
-      toast.error("Failed to create organization");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create organization");
     } finally {
       setCreatingOrg(false);
     }
@@ -191,8 +205,8 @@ export default function ProfilePage() {
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmployeeName.trim() || !newEmployeeEmail.trim()) {
-      toast.error("Please enter name and email");
+    if (!newEmployeeName.trim() || !newEmployeeEmail.trim() || !empJoiningYear.trim() || !empSerialNumber.trim()) {
+      toast.error("Please enter Name, Email, Joining Year, and Serial Number");
       return;
     }
 
@@ -204,6 +218,8 @@ export default function ProfilePage() {
         body: JSON.stringify({
           name: newEmployeeName,
           email: newEmployeeEmail,
+          joiningYear: empJoiningYear,
+          serialNumber: empSerialNumber,
         }),
       });
 
@@ -212,6 +228,8 @@ export default function ProfilePage() {
         toast.success("Employee added successfully!");
         setNewEmployeeName("");
         setNewEmployeeEmail("");
+        setEmpJoiningYear("");
+        setEmpSerialNumber("");
         fetchEmployees();
       } else {
         toast.error(data.message || "Failed to add employee");
@@ -570,128 +588,282 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                {/* Organization Details */}
-                {userData?.organizationId && (
-                  <div className="w-full bg-slate-50 border-2 border-slate-900 rounded-lg p-5 mt-4 hover:bg-white transition-colors">
-                    <div className="flex items-center gap-4 border-b border-slate-900 pb-3 mb-3">
-                      {userData.organizationId.logo ? (
-                        <div className="relative h-12 w-12 overflow-hidden rounded-lg border-2 border-slate-900 shadow-sm shrink-0">
-                          <Image
-                            src={userData.organizationId.logo}
-                            alt="Org Logo"
-                            fill
-                            className="object-cover"
-                          />
+                {/* Organization Details or Creation Form */}
+                {userData?.organizationId ? (
+                  <>
+                    <div className="w-full bg-slate-50 border-2 border-slate-900 rounded-lg p-5 mt-4 hover:bg-white transition-colors">
+                      <div className="flex items-center gap-4 border-b border-slate-900 pb-3 mb-3">
+                        {userData.organizationId.logo ? (
+                          <div className="relative h-12 w-12 overflow-hidden rounded-lg border-2 border-slate-900 shadow-sm shrink-0">
+                            <Image
+                              src={userData.organizationId.logo}
+                              alt="Org Logo"
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-12 w-12 rounded-lg bg-sky-100 flex items-center justify-center border-2 border-slate-900 text-sky-900 font-bold shrink-0">
+                            <Building2 className="h-6 w-6" />
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="text-lg font-bold text-slate-900">{userData.organizationId.name}</h3>
+                          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Organization Details</p>
                         </div>
-                      ) : (
-                        <div className="h-12 w-12 rounded-lg bg-sky-100 flex items-center justify-center border-2 border-slate-900 text-sky-900 font-bold shrink-0">
-                          <Building2 className="h-6 w-6" />
-                        </div>
-                      )}
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900">{userData.organizationId.name}</h3>
-                        <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Organization Details</p>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        {userData.organizationId.address && (
+                          <p className="text-slate-700 font-medium flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-slate-500" />
+                            <span>{userData.organizationId.address}</span>
+                          </p>
+                        )}
+                        {userData.organizationId.additionalInfo && Object.entries(userData.organizationId.additionalInfo).map(([k, v]: any) => (
+                          <p key={k} className="text-slate-700 font-medium flex items-center gap-2">
+                            <span className="font-bold text-slate-900 uppercase text-[10px] tracking-wider px-2 py-0.5 bg-slate-200 border border-slate-900 rounded">{k}:</span>
+                            <span>{v}</span>
+                          </p>
+                        ))}
                       </div>
                     </div>
-                    <div className="space-y-2 text-sm">
-                      {userData.organizationId.address && (
-                        <p className="text-slate-700 font-medium flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-slate-500" />
-                          <span>{userData.organizationId.address}</span>
-                        </p>
-                      )}
-                      {userData.organizationId.additionalInfo && Object.entries(userData.organizationId.additionalInfo).map(([k, v]: any) => (
-                        <p key={k} className="text-slate-700 font-medium flex items-center gap-2">
-                          <span className="font-bold text-slate-900 uppercase text-[10px] tracking-wider px-2 py-0.5 bg-slate-200 border border-slate-900 rounded">{k}:</span>
-                          <span>{v}</span>
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
-                {/* Employees Management List for HR */}
-                {session.user.role === "hr" && (
-                  <div className="w-full border-t-2 border-dashed border-slate-900 pt-6 mt-6 space-y-6">
-                    <div className="flex flex-col md:flex-row gap-6">
-                      {/* Add Employee Form */}
-                      <div className="flex-1 space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Plus className="h-5 w-5 text-sky-900" />
-                          <h3 className="text-lg font-bold text-slate-900">Add New Employee</h3>
+                    {/* Employees Management List for HR */}
+                    {session.user.role === "hr" && (
+                      <div className="w-full border-t-2 border-dashed border-slate-900 pt-6 mt-6 space-y-6">
+                        <div className="flex flex-col md:flex-row gap-6">
+                          {/* Add Employee Form */}
+                          <div className="flex-1 space-y-4">
+                            <div className="flex items-center gap-2">
+                              <Plus className="h-5 w-5 text-sky-900" />
+                              <h3 className="text-lg font-bold text-slate-900">Add New Employee</h3>
+                            </div>
+                            <form onSubmit={handleAddEmployee} className="space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="empName" className="text-slate-900 font-semibold text-sm">Full Name</Label>
+                                  <Input
+                                    id="empName"
+                                    placeholder="Employee Full Name"
+                                    className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
+                                    value={newEmployeeName}
+                                    onChange={(e) => setNewEmployeeName(e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="empEmail" className="text-slate-900 font-semibold text-sm">Email Address</Label>
+                                  <Input
+                                    id="empEmail"
+                                    type="email"
+                                    placeholder="employee@example.com"
+                                    className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
+                                    value={newEmployeeEmail}
+                                    onChange={(e) => setNewEmployeeEmail(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="empJoiningYear" className="text-slate-900 font-semibold text-sm">Joining Year</Label>
+                                  <Input
+                                    id="empJoiningYear"
+                                    type="number"
+                                    placeholder="2026"
+                                    className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
+                                    value={empJoiningYear}
+                                    onChange={(e) => setEmpJoiningYear(e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="empSerialNumber" className="text-slate-900 font-semibold text-sm">Serial Number</Label>
+                                  <Input
+                                    id="empSerialNumber"
+                                    type="number"
+                                    placeholder="1"
+                                    className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
+                                    value={empSerialNumber}
+                                    onChange={(e) => setEmpSerialNumber(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={addingEmployee}
+                                className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-semibold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all text-sm disabled:opacity-75"
+                              >
+                                {addingEmployee ? "Adding..." : "Add Employee"}
+                              </button>
+                            </form>
+                          </div>
+
+                          {/* Employees List */}
+                          <div className="flex-1 space-y-4">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-5 w-5 text-sky-900" />
+                              <h3 className="text-lg font-bold text-slate-900">Organization Employees</h3>
+                            </div>
+                            <div className="border-2 border-slate-900 rounded-lg overflow-hidden bg-slate-50 max-h-[300px] overflow-y-auto">
+                              {employees.length === 0 ? (
+                                <div className="p-8 text-center text-slate-500 font-medium text-sm">
+                                  No employees added yet.
+                                </div>
+                              ) : (
+                                <div className="divide-y-2 divide-slate-900">
+                                  {employees.map((emp) => (
+                                    <div key={emp._id} className="p-3 flex items-center justify-between gap-3 hover:bg-white transition-colors text-sm">
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-slate-900 truncate">{emp.name}</p>
+                                        <p className="text-xs text-slate-500 truncate">{emp.email}</p>
+                                        <p className="text-[10px] text-slate-400 font-semibold uppercase">{emp.employeeId}</p>
+                                      </div>
+                                      <div className="shrink-0 flex items-center gap-1.5">
+                                        {emp.status === "active" ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                            <CheckCircle className="h-3 w-3" />
+                                            Active
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                                            <Clock className="h-3 w-3" />
+                                            Pending
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <form onSubmit={handleAddEmployee} className="space-y-3">
-                          <div className="space-y-2">
-                            <Label htmlFor="empName" className="text-slate-900 font-semibold text-sm">Full Name</Label>
-                            <Input
-                              id="empName"
-                              placeholder="Employee Full Name"
-                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
-                              value={newEmployeeName}
-                              onChange={(e) => setNewEmployeeName(e.target.value)}
-                            />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full bg-slate-50 border-2 border-slate-900 rounded-lg p-5 mt-4">
+                    {session.user.role === "hr" ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-slate-900 pb-2">
+                          <Building2 className="h-5 w-5 text-sky-900" />
+                          <h3 className="text-lg font-bold text-slate-900">Create Your Organization</h3>
+                        </div>
+                        {orgLogoPreview && (
+                          <div className="flex justify-center mb-6">
+                            <div className="relative h-28 w-28 rounded-full border-4 border-slate-900 overflow-hidden shadow-lg bg-slate-100">
+                              <Image
+                                src={orgLogoPreview}
+                                alt="Logo Preview"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="empEmail" className="text-slate-900 font-semibold text-sm">Email Address</Label>
-                            <Input
-                              id="empEmail"
-                              type="email"
-                              placeholder="employee@example.com"
-                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
-                              value={newEmployeeEmail}
-                              onChange={(e) => setNewEmployeeEmail(e.target.value)}
-                            />
+                        )}
+                        <form onSubmit={handleCreateOrganization} className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="createOrgName" className="text-slate-900 font-semibold text-sm">Organization Name *</Label>
+                              <Input
+                                id="createOrgName"
+                                placeholder="ACME Corp"
+                                className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
+                                value={orgName}
+                                onChange={(e) => setOrgName(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="createOrgAddress" className="text-slate-900 font-semibold text-sm">Address</Label>
+                              <Input
+                                id="createOrgAddress"
+                                placeholder="123 Main St, New York"
+                                className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
+                                value={orgAddress}
+                                onChange={(e) => setOrgAddress(e.target.value)}
+                              />
+                            </div>
                           </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-slate-900 font-semibold text-sm">Logo</Label>
+                              <label
+                                htmlFor="orgLogoFileUploader"
+                                className="flex flex-col items-center justify-center border-2 border-dashed border-slate-900 rounded-lg p-4 bg-slate-50 hover:bg-slate-100 hover:shadow-sm cursor-pointer transition-all gap-1.5"
+                              >
+                                <div className="h-8 w-8 rounded-full bg-sky-100 flex items-center justify-center border border-slate-900 text-sky-900 shrink-0">
+                                  <Upload className="h-4 w-4" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-800 truncate max-w-xs">
+                                  {orgLogoFile ? orgLogoFile.name : "Choose company logo..."}
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-medium">
+                                  PNG, JPG up to 1MB
+                                </span>
+                              </label>
+                              <input
+                                id="orgLogoFileUploader"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleOrgLogoChange}
+                              />
+                              {orgLogoFile && (
+                                <p className="text-xs text-emerald-600 font-semibold text-center mt-1 flex items-center justify-center gap-1">✓ Logo selected</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Dynamic Fields */}
+                          <div className="space-y-2">
+                            <Label className="text-slate-900 font-semibold text-sm flex justify-between items-center">
+                              <span>Additional Information</span>
+                              <button
+                                type="button"
+                                onClick={addOrgField}
+                                className="text-xs text-sky-900 hover:text-sky-800 font-bold underline"
+                              >
+                                + Add Custom Field
+                              </button>
+                            </Label>
+                            {orgFields.map((field, idx) => (
+                              <div key={idx} className="flex gap-2 items-center">
+                                <Input
+                                  placeholder="Label (e.g. Website)"
+                                  className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs h-9"
+                                  value={field.key}
+                                  onChange={(e) => updateOrgField(idx, "key", e.target.value)}
+                                />
+                                <Input
+                                  placeholder="Value (e.g. acme.com)"
+                                  className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs h-9"
+                                  value={field.value}
+                                  onChange={(e) => updateOrgField(idx, "value", e.target.value)}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeOrgField(idx)}
+                                  className="text-red-500 hover:text-red-700 font-bold px-2"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+
                           <button
                             type="submit"
-                            disabled={addingEmployee}
-                            className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-semibold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all text-sm disabled:opacity-75"
+                            disabled={creatingOrg}
+                            className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all"
                           >
-                            {addingEmployee ? "Adding..." : "Add Employee"}
+                            {creatingOrg ? "Creating..." : "Create Organization"}
                           </button>
                         </form>
                       </div>
-
-                      {/* Employees List */}
-                      <div className="flex-1 space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-5 w-5 text-sky-900" />
-                          <h3 className="text-lg font-bold text-slate-900">Organization Employees</h3>
-                        </div>
-                        <div className="border-2 border-slate-900 rounded-lg overflow-hidden bg-slate-50 max-h-[300px] overflow-y-auto">
-                          {employees.length === 0 ? (
-                            <div className="p-8 text-center text-slate-500 font-medium text-sm">
-                              No employees added yet.
-                            </div>
-                          ) : (
-                            <div className="divide-y-2 divide-slate-900">
-                              {employees.map((emp) => (
-                                <div key={emp._id} className="p-3 flex items-center justify-between gap-3 hover:bg-white transition-colors text-sm">
-                                  <div className="min-w-0">
-                                    <p className="font-bold text-slate-900 truncate">{emp.name}</p>
-                                    <p className="text-xs text-slate-500 truncate">{emp.email}</p>
-                                    <p className="text-[10px] text-slate-400 font-semibold uppercase">{emp.employeeId}</p>
-                                  </div>
-                                  <div className="shrink-0 flex items-center gap-1.5">
-                                    {emp.status === "active" ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                        <CheckCircle className="h-3 w-3" />
-                                        Active
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                                        <Clock className="h-3 w-3" />
-                                        Pending
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                    ) : (
+                      <div className="p-4 text-center text-slate-600 font-medium">
+                        You are not currently linked to any organization. Please contact your HR administrator to be added.
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </>

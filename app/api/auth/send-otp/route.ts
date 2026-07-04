@@ -6,7 +6,7 @@ import crypto from "crypto";
 
 export async function POST(req: Request) {
     try {
-        const { email, name, role } = await req.json();
+        const { email, name, role, organizationId } = await req.json();
 
         if (!email) {
             return NextResponse.json(
@@ -32,9 +32,15 @@ export async function POST(req: Request) {
                     { status: 400 }
                 );
             }
-            if (name && existingUser.name.toLowerCase().trim() !== name.toLowerCase().trim()) {
+            if (!organizationId) {
                 return NextResponse.json(
-                    { message: "Provided name does not match the registered employee name." },
+                    { message: "Please select your organization." },
+                    { status: 400 }
+                );
+            }
+            if (existingUser.organizationId?.toString() !== organizationId.toString()) {
+                return NextResponse.json(
+                    { message: "This email is not registered under the selected organization." },
                     { status: 400 }
                 );
             }

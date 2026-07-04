@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
+import Organization from "@/models/Organization";
 import { validateEmail } from "@/lib/validations";
 
 // GET: List all employees in the HR's organization
@@ -45,10 +46,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Forbidden - HR access required" }, { status: 403 });
         }
 
-        const { name, email, employeeId } = await req.json();
+        const { name, email, joiningYear, serialNumber } = await req.json();
 
-        if (!name || !email) {
-            return NextResponse.json({ message: "Name and email are required" }, { status: 400 });
+        if (!name || !email || !joiningYear || !serialNumber) {
+            return NextResponse.json({ message: "Name, email, joining year, and serial number are required" }, { status: 400 });
         }
 
         const emailError = validateEmail(email);
@@ -62,17 +63,40 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "User already exists with this email" }, { status: 400 });
         }
 
-        // Generate unique employee ID if not provided
-        let finalEmployeeId = employeeId?.trim();
-        if (!finalEmployeeId) {
-            const randomSuffix = Math.floor(100000 + Math.random() * 900000).toString();
-            finalEmployeeId = `EMP-${randomSuffix}`;
+        // Fetch organization to compute initials
+        const org = await Organization.findById(hrUser.organizationId);
+        if (!org) {
+            return NextResponse.json({ message: "Organization not found" }, { status: 404 });
         }
+
+        // 1. Initials of the company name
+        const words = org.name.trim().split(/\s+/);
+        let orgInitials = "";
+        if (words.length === 1) {
+            orgInitials = words[0].substring(0, 2).toUpperCase();
+        } else {
+            orgInitials = words.map((w: string) => w[0]).join("").toUpperCase();
+        }
+
+        // 2. First 2+2 Letters of the employee's first name and last name
+        const nameParts = name.trim().split(/\s+/);
+        let nameCode = "";
+        if (nameParts.length >= 2) {
+            const firstPart = nameParts[0].substring(0, 2).toUpperCase();
+            const lastPart = nameParts[nameParts.length - 1].substring(0, 2).toUpperCase();
+            nameCode = firstPart + lastPart;
+        } else {
+            nameCode = name.trim().substring(0, 4).toUpperCase().padEnd(4, "_");
+        }
+
+        // 3 & 4. Joining Year and Serial Number
+        const formattedSerial = serialNumber.toString().trim().padStart(2, "0");
+        const finalEmployeeId = `${orgInitials}-${nameCode}-${joiningYear}-${formattedSerial}`.toUpperCase();
 
         // Check if employeeId already registered
         const existingEmployee = await User.findOne({ employeeId: finalEmployeeId });
         if (existingEmployee) {
-            return NextResponse.json({ message: "Employee ID is already registered" }, { status: 400 });
+            return NextResponse.json({ message: `Employee ID ${finalEmployeeId} is already registered` }, { status: 400 });
         }
 
         const newEmployee = new User({
