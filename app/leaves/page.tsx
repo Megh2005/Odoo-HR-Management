@@ -28,6 +28,7 @@ export default function LeavesPage() {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [approvedLeaveDates, setApprovedLeaveDates] = useState<Set<string>>(new Set());
 
   // Calendar states
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -39,7 +40,7 @@ export default function LeavesPage() {
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState(0);
 
-  // Fetch user data
+  // Fetch user data and approved leave dates
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth");
@@ -56,6 +57,8 @@ export default function LeavesPage() {
             if (data.role !== "employee") {
               router.push("/dashboard");
             }
+            // Fetch approved leave requests after setting user data
+            await fetchApprovedLeaves();
           }
         } catch (error) {
           console.error("Failed to fetch user data:", error);
@@ -68,6 +71,42 @@ export default function LeavesPage() {
       fetchUserData();
     }
   }, [status, session, router]);
+
+  // Fetch approved leave dates for the user
+  const fetchApprovedLeaves = async () => {
+    try {
+      // Fetch all approved leave requests for this user
+      const res = await fetch("/api/leaves/my-approved", { cache: "no-store" });
+      if (res.ok) {
+        const leaves = await res.json();
+        
+        // Build set of all approved leave dates
+        const blockedDates = new Set<string>();
+        leaves.forEach((leave: any) => {
+          const startDate = new Date(leave.startDate);
+          const endDate = new Date(leave.endDate);
+          
+          let currentDate = new Date(startDate);
+          while (currentDate <= endDate) {
+            const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`;
+            blockedDates.add(dateStr);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        });
+        
+        setApprovedLeaveDates(blockedDates);
+      }
+    } catch (error) {
+      console.error("Failed to fetch approved leaves:", error);
+    }
+  };
+
+  // Refetch approved leaves when user data changes
+  useEffect(() => {
+    if (userData?.id) {
+      fetchApprovedLeaves();
+    }
+  }, [userData?.id]);
 
   // Calculate duration when dates change
   useEffect(() => {
@@ -103,7 +142,16 @@ export default function LeavesPage() {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date >= today;
+    
+    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const isBlocked = approvedLeaveDates.has(dateStr);
+    
+    return date >= today && !isBlocked;
+  };
+
+  const isDateBlocked = (day: number) => {
+    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return approvedLeaveDates.has(dateStr);
   };
 
   const isDateInRange = (day: number) => {
@@ -207,7 +255,7 @@ export default function LeavesPage() {
   const monthName = currentMonth.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
+    <div className="min-h-screen py-8 px-4">
       <BackgroundPattern />
 
       <div className="max-w-4xl mx-auto relative z-10">
@@ -231,13 +279,23 @@ export default function LeavesPage() {
           {/* Calendar Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Instructions Card */}
-            <div className="bg-white border-2 border-slate-900 rounded-xl p-5 shadow">
+            <div className="bg-white border-2 border-slate-900 rounded-xl p-5 shadow space-y-3">
               <p className="text-sm font-semibold text-slate-700 leading-relaxed">
                 Select your leave start and end dates from the calendar below. Both dates must be after today.
                 {userData?.gender === "female" && (
                   <span className="block mt-2 text-sky-900">Maternity leave is available for you.</span>
                 )}
               </p>
+              <div className="pt-2 border-t border-slate-200 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-slate-300 border border-slate-400" />
+                  <span className="text-xs font-semibold text-slate-600">Blocked - Already approved leave</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-sky-900 border border-slate-900" />
+                  <span className="text-xs font-semibold text-slate-600">Selected dates for new request</span>
+                </div>
+              </div>
             </div>
 
             {/* Calendar */}
@@ -279,6 +337,7 @@ export default function LeavesPage() {
 
                   const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                   const isSelectable = isDateSelectable(day);
+                  const isBlocked = isDateBlocked(day);
                   const isStart = startDate === dateStr;
                   const isEnd = endDate === dateStr;
                   const isInRange = isDateInRange(day);
@@ -291,17 +350,20 @@ export default function LeavesPage() {
                     <button
                       key={day}
                       onClick={() => handleDateSelect(day)}
-                      disabled={!isSelectable}
+                      disabled={!isSelectable || isBlocked}
                       className={`
-                        aspect-square flex items-center justify-center rounded-lg font-bold text-sm transition-all
-                        ${!isSelectable ? "bg-slate-50 text-slate-300 cursor-not-allowed" : ""}
-                        ${isStart || isEnd ? "bg-sky-900 text-white border-2 border-slate-900 scale-105" : ""}
-                        ${isInRange && !isStart && !isEnd ? "bg-sky-100 text-sky-900" : ""}
-                        ${!isStart && !isEnd && !isInRange && isSelectable ? "bg-white border-2 border-slate-200 hover:border-sky-900" : ""}
-                        ${isToday && !isStart && !isEnd ? "ring-2 ring-amber-400" : ""}
+                        aspect-square flex items-center justify-center rounded-lg font-bold text-sm transition-all relative
+                        ${isBlocked ? "bg-gradient-to-br from-slate-200 to-slate-300 text-slate-500 cursor-not-allowed border-2 border-slate-400 opacity-60" : ""}
+                        ${!isSelectable && !isBlocked ? "bg-slate-50 text-slate-300 cursor-not-allowed" : ""}
+                        ${isStart || isEnd ? "bg-sky-900 text-white border-2 border-slate-900 scale-105 z-10" : ""}
+                        ${isInRange && !isStart && !isEnd && !isBlocked ? "bg-sky-100 text-sky-900" : ""}
+                        ${!isStart && !isEnd && !isInRange && isSelectable && !isBlocked ? "bg-white border-2 border-slate-200 hover:border-sky-900" : ""}
+                        ${isToday && !isStart && !isEnd && !isBlocked ? "ring-2 ring-amber-400" : ""}
                       `}
+                      title={isBlocked ? "Leave already approved for this date" : ""}
                     >
                       {day}
+                      {isBlocked && <div className="absolute inset-0 flex items-center justify-center text-xs opacity-70">✕</div>}
                     </button>
                   );
                 })}

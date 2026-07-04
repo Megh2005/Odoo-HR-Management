@@ -6,7 +6,7 @@ import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "fireb
 import { db } from "@/lib/firebase";
 import { sendLeaveResponseEmail } from "@/lib/email";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.email) {
@@ -26,8 +26,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             }, { status: 400 });
         }
 
+        // Await params to get id
+        const { id } = await params;
+
         // Get leave request
-        const leaveRef = doc(db, "leaveRequests", params.id);
+        const leaveRef = doc(db, "leaveRequests", id);
         const leaveSnap = await getDoc(leaveRef);
 
         if (!leaveSnap.exists()) {
@@ -79,7 +82,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                     const attendanceDoc = querySnapshot.docs[0];
                     await updateDoc(doc(db, "attendances", attendanceDoc.id), {
                         status: "leave",
-                        leaveRequestId: params.id,
+                        leaveRequestId: id,
                         checkIn: null,
                         checkOut: null,
                         workingHours: 0,
@@ -93,7 +96,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                         employeeId: leaveData.employeeId,
                         date: dateStr,
                         status: "leave",
-                        leaveRequestId: params.id,
+                        leaveRequestId: id,
                         checkIn: null,
                         checkOut: null,
                         workingHours: 0,
@@ -123,7 +126,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         return NextResponse.json({ 
             message: `Leave request ${status} successfully`,
             leaveRequest: {
-                id: params.id,
+                id: id,
                 ...leaveData,
                 status: status,
             }
@@ -137,7 +140,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.email) {
@@ -149,7 +152,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             return NextResponse.json({ message: "Forbidden - HR access required" }, { status: 403 });
         }
 
-        const leaveRef = doc(db, "leaveRequests", params.id);
+        // Await params to get id
+        const { id } = await params;
+
+        const leaveRef = doc(db, "leaveRequests", id);
         const leaveSnap = await getDoc(leaveRef);
 
         if (!leaveSnap.exists()) {

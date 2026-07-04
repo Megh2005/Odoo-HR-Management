@@ -214,7 +214,7 @@ export default function HRLeavesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
+    <div className="min-h-screen py-8 px-4 relative">
       <BackgroundPattern />
 
       <div className="max-w-6xl mx-auto relative z-10">

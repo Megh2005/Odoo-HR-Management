@@ -177,7 +177,7 @@ export const sendOrganizationCreationEmail = async (org: any, hrUser: any) => {
       : "";
 
     const mailOptions = {
-      from: `"HR Management" <${process.env.SMTP_USER}>`,
+      from: `"HRNode" <${process.env.SMTP_USER}>`,
       to: hrUser.email,
       subject: `Organization Created - ${org.name}`,
       html: `
@@ -219,7 +219,7 @@ export const sendOrganizationCreationEmail = async (org: any, hrUser: any) => {
           </div>
 
           <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-            <p style="margin: 0 0 5px;">This is an automated notification regarding your HR management workspace.</p>
+            <p style="margin: 0 0 5px;">This is an automated notification regarding your HRNode workspace.</p>
             <p style="margin: 0;">&copy; ${new Date().getFullYear()} HRSpecs. All rights reserved.</p>
           </div>
         </div>
@@ -238,7 +238,7 @@ export const sendEmployeeAdditionEmail = async (employee: any, org: any, hrUser:
     const signupUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth`;
 
     const mailOptions = {
-      from: `"HR Management" <${process.env.SMTP_USER}>`,
+      from: `"HRNode" <${process.env.SMTP_USER}>`,
       to: employee.email,
       subject: `Welcome to ${org.name} - Account Pre-Registered`,
       html: `
