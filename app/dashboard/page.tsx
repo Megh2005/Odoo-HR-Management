@@ -156,7 +156,7 @@ export default function Dashboard() {
       return totalWorkingHours;
     };
 
-    // Function to save working hours to database every 30 seconds
+    // Function to save working hours to database every 90 seconds
     const saveWorkingHours = async (workingHours: number) => {
       try {
         await fetch("/api/attendance/update-hours", {
@@ -181,14 +181,14 @@ export default function Dashboard() {
       updateSessionTimer();
     }, 1000);
 
-    // Save working hours to database every 30 seconds (increased frequency)
+    // Save working hours to database every 90 seconds (reduced database calls)
     const saveInterval = setInterval(() => {
       const checkInTime = new Date(todayRecord.checkIn).getTime();
       const diffMs = Date.now() - checkInTime;
       // Keep precision to 1 decimal place (0.1, 0.2, etc.)
       const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
       saveWorkingHours(totalWorkingHours);
-    }, 30000); // 30 seconds
+    }, 90000); // 90 seconds
 
     return () => {
       clearInterval(timerInterval);

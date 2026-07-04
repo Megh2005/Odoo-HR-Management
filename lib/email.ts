@@ -210,7 +210,7 @@ export const sendOrganizationCreationEmail = async (org: any, hrUser: any) => {
             </div>
 
             <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; margin: 20px 0;">
-              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">📧 <strong>Important:</strong> Check your spam folder if you don't receive emails from us. Important notifications might end up there!</p>
+              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">[IMPORTANT] Check your spam folder if you don't receive emails from us. Important notifications might end up there.</p>
             </div>
 
             <div style="text-align: center; margin-top: 30px;">
@@ -258,7 +258,7 @@ export const sendEmployeeAdditionEmail = async (employee: any, org: any, hrUser:
             </div>
 
             <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; margin: 20px 0;">
-              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">📧 <strong>Important:</strong> Check your spam folder if you don't receive future emails from us. Important notifications might end up there!</p>
+              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">[IMPORTANT] Check your spam folder if you don't receive future emails from us. Important notifications might end up there.</p>
             </div>
 
             <h3 style="font-size: 15px; color: #0f172a; margin-top: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">How to Activate Your Account:</h3>
