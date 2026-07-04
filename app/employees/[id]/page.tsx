@@ -17,6 +17,7 @@ import {
   Briefcase,
   ChevronRight,
   Save,
+  Trash2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -138,6 +139,10 @@ export default function EmployeeDetailPage() {
   const [salaryForm, setSalaryForm] = useState<SalaryForm>(EMPTY_SALARY);
   const [savingSalary, setSavingSalary] = useState(false);
   const [salaryLoaded, setSalaryLoaded] = useState(false);
+
+  // Delete states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // ── Auth guard ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -435,6 +440,28 @@ export default function EmployeeDetailPage() {
 
   const gross = computeGross(salaryForm);
 
+  // ── Delete employee ──────────────────────────────────────────────────
+  const handleDeleteEmployee = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/employees/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Employee deleted successfully");
+        router.push("/employees");
+      } else {
+        toast.error(data.message || "Failed to delete employee");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 sm:p-6 pt-8">
       <BackgroundPattern />
@@ -468,7 +495,7 @@ export default function EmployeeDetailPage() {
                   <Mail size={11} /> {employee.email}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 <span className="text-[10px] font-bold bg-sky-100 border border-slate-900 px-2 py-1 rounded flex items-center gap-1">
                   <BadgeCheck size={11} />
                   {employee.employeeId || "—"}
@@ -483,6 +510,14 @@ export default function EmployeeDetailPage() {
                   {employee.status === "active" ? <UserCheck size={11} /> : <Clock size={11} />}
                   {employee.status === "active" ? "Active" : "Pending"}
                 </span>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="text-[10px] font-bold bg-red-100 border border-red-300 text-red-700 px-2 py-1 rounded flex items-center gap-1 hover:bg-red-200 transition-colors"
+                  title="Delete this employee permanently"
+                >
+                  <Trash2 size={11} />
+                  Delete
+                </button>
               </div>
             </div>
           </div>
@@ -785,7 +820,57 @@ export default function EmployeeDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white border-2 border-slate-900 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden">
+              {/* Header */}
+              <div className="bg-red-50 border-b-2 border-slate-900 px-6 py-4">
+                <h2 className="text-lg font-black text-red-700 flex items-center gap-2">
+                  <Trash2 size={18} />
+                  Delete Employee
+                </h2>
+                <p className="text-xs text-red-600 font-semibold mt-1">This action cannot be undone</p>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-5 space-y-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-xs font-semibold text-red-800 space-y-2">
+                  <p>⚠️ You are about to permanently delete:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-1">
+                    <li>Employee profile: <span className="font-black">{employee.name}</span></li>
+                    <li>All attendance records</li>
+                    <li>Salary information</li>
+                    <li>Security/personal data</li>
+                  </ul>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs font-semibold text-amber-800">
+                  This will also remove the employee from your company profile. Please confirm below.
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-slate-50 border-t-2 border-slate-900 px-6 py-4 flex gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 border-2 border-slate-900 rounded-lg font-bold text-xs text-slate-900 bg-white hover:bg-slate-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteEmployee}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 border-2 border-red-500 rounded-lg font-bold text-xs text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                >
+                  <Trash2 size={12} />
+                  {deleting ? "Deleting..." : "Delete Permanently"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
-}

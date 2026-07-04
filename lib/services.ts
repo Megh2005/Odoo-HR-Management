@@ -8,6 +8,7 @@ import {
     setDoc, 
     addDoc, 
     updateDoc, 
+    deleteDoc,
     limit,
     orderBy 
 } from "firebase/firestore";
@@ -96,6 +97,13 @@ export async function updateUser(id: string, data: any) {
     });
     const docSnap = await getDoc(docRef);
     return docToObj(docSnap);
+}
+
+export async function deleteUser(id: string) {
+    if (!id) throw new Error("User ID is required for deletion");
+    const docRef = doc(db, "users", id);
+    await deleteDoc(docRef);
+    return { success: true, id };
 }
 
 // ── ORGANIZATION SERVICES ───────────────────────────────────────────────────

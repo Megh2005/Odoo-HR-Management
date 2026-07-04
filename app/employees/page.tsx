@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import BackgroundPattern from "@/components/BackgroundPattern";
-import { Users, UserCheck, Clock, Search } from "lucide-react";
+import { Users, UserCheck, Clock, Search, Trash2, MoreVertical } from "lucide-react";
 import { toast } from "react-toastify";
 
 export default function EmployeesPage() {
@@ -16,6 +16,8 @@ export default function EmployeesPage() {
   const [filtered, setFiltered] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; emp: any | null }>({ show: false, emp: null });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -62,6 +64,29 @@ export default function EmployeesPage() {
       toast.error("Network error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEmployee = async () => {
+    if (!deleteModal.emp) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/employees/${deleteModal.emp._id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Employee deleted successfully");
+        setEmployees((prev) => prev.filter((e) => e._id !== deleteModal.emp._id));
+        setFiltered((prev) => prev.filter((e) => e._id !== deleteModal.emp._id));
+        setDeleteModal({ show: false, emp: null });
+      } else {
+        toast.error(data.message || "Failed to delete employee");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -118,60 +143,128 @@ export default function EmployeesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((emp) => (
-              <button
+              <div
                 key={emp._id}
-                onClick={() => router.push(`/employees/${emp._id}`)}
-                className="group text-left border-2 border-slate-900 rounded-xl bg-white/95 hover:bg-sky-50/60 hover:shadow-lg transition-all duration-200 overflow-hidden active:scale-[0.98] cursor-pointer"
+                className="group relative text-left border-2 border-slate-900 rounded-xl bg-white/95 hover:bg-sky-50/60 hover:shadow-lg transition-all duration-200 overflow-hidden"
               >
-                {/* Avatar banner */}
-                <div className="bg-linear-to-br from-sky-900 to-slate-800 h-20 flex items-center justify-center relative">
-                  <div className="relative h-16 w-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-slate-300">
-                    <Image
-                      src={emp.avatar || `https://robohash.org/${emp.email}`}
-                      alt={emp.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                </div>
+                {/* Delete button (top-right) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteModal({ show: true, emp });
+                  }}
+                  className="absolute top-3 right-3 z-10 p-1.5 bg-red-100 hover:bg-red-200 border border-red-300 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  title="Delete employee"
+                >
+                  <Trash2 size={14} className="text-red-600" />
+                </button>
 
-                {/* Info */}
-                <div className="p-4 space-y-2">
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 truncate group-hover:text-sky-900 transition-colors">
-                      {emp.name}
-                    </h3>
-                    <p className="text-[10px] text-slate-500 font-semibold truncate">{emp.email}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-700 bg-sky-100 border border-slate-900 px-2 py-0.5 rounded">
-                      {emp.employeeId || "—"}
-                    </span>
-                    <span
-                      className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        emp.status === "active"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {emp.status === "active" ? (
-                        <UserCheck size={9} />
-                      ) : (
-                        <Clock size={9} />
-                      )}
-                      {emp.status === "active" ? "Active" : "Pending"}
-                    </span>
+                <button
+                  onClick={() => router.push(`/employees/${emp._id}`)}
+                  className="block w-full text-left active:scale-[0.98] cursor-pointer"
+                >
+                  {/* Avatar banner */}
+                  <div className="bg-linear-to-br from-sky-900 to-slate-800 h-20 flex items-center justify-center relative">
+                    <div className="relative h-16 w-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-slate-300">
+                      <Image
+                        src={emp.avatar || `https://robohash.org/${emp.email}`}
+                        alt={emp.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
 
-                  {emp.bio && (
-                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed line-clamp-2 font-sans">
-                      {emp.bio}
-                    </p>
-                  )}
-                </div>
-              </button>
+                  {/* Info */}
+                  <div className="p-4 space-y-2">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 truncate group-hover:text-sky-900 transition-colors">
+                        {emp.name}
+                      </h3>
+                      <p className="text-[10px] text-slate-500 font-semibold truncate">{emp.email}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-700 bg-sky-100 border border-slate-900 px-2 py-0.5 rounded">
+                        {emp.employeeId || "—"}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          emp.status === "active"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {emp.status === "active" ? (
+                          <UserCheck size={9} />
+                        ) : (
+                          <Clock size={9} />
+                        )}
+                        {emp.status === "active" ? "Active" : "Pending"}
+                      </span>
+                    </div>
+
+                    {emp.bio && (
+                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed line-clamp-2 font-sans">
+                        {emp.bio}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              </div>
             ))}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.show && deleteModal.emp && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white border-2 border-slate-900 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden">
+              {/* Header */}
+              <div className="bg-red-50 border-b-2 border-slate-900 px-6 py-4">
+                <h2 className="text-lg font-black text-red-700 flex items-center gap-2">
+                  <Trash2 size={18} />
+                  Delete Employee
+                </h2>
+                <p className="text-xs text-red-600 font-semibold mt-1">This action cannot be undone</p>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-5 space-y-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-xs font-semibold text-red-800 space-y-2">
+                  <p>⚠️ You are about to permanently delete:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-1">
+                    <li>Employee: <span className="font-black">{deleteModal.emp.name}</span></li>
+                    <li>All attendance records</li>
+                    <li>Salary information</li>
+                    <li>Security/personal data</li>
+                  </ul>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs font-semibold text-amber-800">
+                  This will remove the employee from your company profile. Please confirm below.
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-slate-50 border-t-2 border-slate-900 px-6 py-4 flex gap-3">
+                <button
+                  onClick={() => setDeleteModal({ show: false, emp: null })}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 border-2 border-slate-900 rounded-lg font-bold text-xs text-slate-900 bg-white hover:bg-slate-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteEmployee}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 border-2 border-red-500 rounded-lg font-bold text-xs text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                >
+                  <Trash2 size={12} />
+                  {deleting ? "Deleting..." : "Delete Permanently"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
