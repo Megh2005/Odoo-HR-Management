@@ -16,15 +16,19 @@ export async function POST(req: Request) {
             otp, 
             hash, 
             role,
-            orgName,
-            orgLogo,
-            orgAddress,
-            orgAdditionalInfo
+            avatar
         } = await req.json();
 
         if (!email || !otp || !hash || !role) {
             return NextResponse.json(
                 { message: "Missing required fields" },
+                { status: 400 }
+            );
+        }
+
+        if (role !== "employee" && role !== "hr") {
+            return NextResponse.json(
+                { message: "Invalid role specified" },
                 { status: 400 }
             );
         }
@@ -113,43 +117,21 @@ export async function POST(req: Request) {
                 );
             }
 
-            if (!orgName) {
-                return NextResponse.json(
-                    { message: "Organization name is required for HR registration." },
-                    { status: 400 }
-                );
-            }
-
-            // 1. Create the user first (pending organization)
+            // Create HR User
             const newUser = new User({
                 name,
                 email,
                 password: hashedPassword,
                 role: "hr",
                 status: "active",
-                avatar: `https://robohash.org/${email}`,
+                avatar: avatar || `https://robohash.org/${email}`,
                 gender: gender || "male",
             });
 
             await newUser.save();
 
-            // 2. Create the Organization
-            const newOrg = new Organization({
-                name: orgName,
-                logo: orgLogo || "",
-                address: orgAddress || "",
-                additionalInfo: orgAdditionalInfo || {},
-                createdBy: newUser._id,
-            });
-
-            await newOrg.save();
-
-            // 3. Link the user to the organization
-            newUser.organizationId = newOrg._id;
-            await newUser.save();
-
             return NextResponse.json(
-                { message: "HR and Organization registered successfully", user: newUser },
+                { message: "HR registered successfully", user: newUser },
                 { status: 201 }
             );
         }

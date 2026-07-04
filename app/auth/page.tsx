@@ -55,28 +55,10 @@ export default function AuthPage() {
     gender: "",
     signupEmployeeId: "",
     role: "",
-    orgName: "",
-    orgLogo: "",
-    orgAddress: "",
+    signupAvatar: "",
   });
 
-  const [additionalFields, setAdditionalFields] = useState<{ key: string; value: string }[]>([]);
-
-  const addAdditionalField = () => {
-    setAdditionalFields([...additionalFields, { key: "", value: "" }]);
-  };
-
-  const removeAdditionalField = (index: number) => {
-    setAdditionalFields(additionalFields.filter((_, idx) => idx !== index));
-  };
-
-  const updateAdditionalField = (index: number, field: "key" | "value", value: string) => {
-    setAdditionalFields(
-      additionalFields.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
-    );
-  };
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -88,15 +70,15 @@ export default function AuthPage() {
       body: fileFormData,
     }).then(async (res) => {
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to upload logo");
-      setFormData((prev) => ({ ...prev, orgLogo: data.secure_url }));
+      if (!res.ok) throw new Error(data.message || "Failed to upload avatar");
+      setFormData((prev) => ({ ...prev, signupAvatar: data.secure_url }));
       return data;
     });
 
     await toast.promise(promise, {
-      pending: "Uploading organization logo...",
-      success: "Logo uploaded successfully!",
-      error: "Failed to upload logo",
+      pending: "Uploading profile image...",
+      success: "Profile image uploaded successfully!",
+      error: "Failed to upload profile image",
     });
   };
 
@@ -169,10 +151,6 @@ export default function AuthPage() {
         toast.error("Please select a role");
         return;
       }
-      if (formData.role === "hr" && !formData.orgName) {
-        toast.error("Organization name is required for HR");
-        return;
-      }
       if (!validateEmail(formData.signupEmail)) return;
       if (!validatePassword(formData.signupPassword)) return;
       if (!formData.gender) {
@@ -221,13 +199,6 @@ export default function AuthPage() {
             return;
           }
 
-          const orgAdditionalInfo: Record<string, string> = {};
-          additionalFields.forEach((field) => {
-            if (field.key.trim() && field.value.trim()) {
-              orgAdditionalInfo[field.key.trim()] = field.value.trim();
-            }
-          });
-
           const promise = fetch("/api/auth/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -237,10 +208,7 @@ export default function AuthPage() {
               password: formData.signupPassword,
               gender: formData.gender,
               role: formData.role,
-              orgName: formData.orgName,
-              orgLogo: formData.orgLogo,
-              orgAddress: formData.orgAddress,
-              orgAdditionalInfo,
+              avatar: formData.signupAvatar,
               otp,
               hash: otpHash, // Send the hash for verification
             }),
@@ -490,79 +458,18 @@ export default function AuthPage() {
                     </select>
                   </div>
 
-                  {formData.role === "hr" && (
-                    <div className="space-y-4 border-t-2 border-dashed border-slate-900 pt-4 mt-4 animate-none">
-                      <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Organization Details</h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="orgName" className="text-slate-900 font-medium">Organization Name</Label>
-                        <Input
-                          id="orgName"
-                          placeholder="ACME Corp"
-                          className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
-                          value={formData.orgName}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="orgAddress" className="text-slate-900 font-medium">Address</Label>
-                        <Input
-                          id="orgAddress"
-                          placeholder="123 Main St, New York"
-                          className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
-                          value={formData.orgAddress}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-slate-900 font-medium">Logo</Label>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-900 file:text-white hover:file:bg-sky-800"
-                          onChange={handleLogoUpload}
-                        />
-                        {formData.orgLogo && (
-                          <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">✓ Logo uploaded successfully</p>
-                        )}
-                      </div>
-                      {/* Dynamic Additional Info */}
-                      <div className="space-y-2">
-                        <Label className="text-slate-900 font-medium flex justify-between items-center">
-                          <span>Additional Fields</span>
-                          <button
-                            type="button"
-                            onClick={addAdditionalField}
-                            className="text-xs text-sky-900 hover:text-sky-800 font-bold underline"
-                          >
-                            + Add Field
-                          </button>
-                        </Label>
-                        {additionalFields.map((field, idx) => (
-                          <div key={idx} className="flex gap-2 items-center">
-                            <Input
-                              placeholder="Label (e.g. Website)"
-                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs h-8"
-                              value={field.key}
-                              onChange={(e) => updateAdditionalField(idx, "key", e.target.value)}
-                            />
-                            <Input
-                              placeholder="Value (e.g. acme.com)"
-                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs h-8"
-                              value={field.value}
-                              onChange={(e) => updateAdditionalField(idx, "value", e.target.value)}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeAdditionalField(idx)}
-                              className="text-red-500 hover:text-red-700 font-bold px-2 text-xs"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label className="text-slate-900 font-medium">Profile Image</Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-900 file:text-white hover:file:bg-sky-800"
+                      onChange={handleAvatarUpload}
+                    />
+                    {formData.signupAvatar && (
+                      <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">✓ Profile image uploaded successfully</p>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     <Label
                       htmlFor="signupEmail"

@@ -27,7 +27,7 @@ import {
   Clock,
   Building,
 } from "lucide-react";
-import CompleteProfileSheet from "@/components/CompleteProfileSheet";
+
 import { indianStatesAndCities } from "@/lib/states";
 import { validatePincode } from "@/lib/pincode-validator";
 
@@ -85,6 +85,91 @@ export default function ProfilePage() {
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
   const [addingEmployee, setAddingEmployee] = useState(false);
+
+  // States for organization creation form
+  const [orgName, setOrgName] = useState("");
+  const [orgAddress, setOrgAddress] = useState("");
+  const [orgLogo, setOrgLogo] = useState("");
+  const [orgFields, setOrgFields] = useState<{ key: string; value: string }[]>([]);
+  const [creatingOrg, setCreatingOrg] = useState(false);
+
+  const addOrgField = () => {
+    setOrgFields([...orgFields, { key: "", value: "" }]);
+  };
+
+  const removeOrgField = (index: number) => {
+    setOrgFields(orgFields.filter((_, idx) => idx !== index));
+  };
+
+  const updateOrgField = (index: number, field: "key" | "value", value: string) => {
+    setOrgFields(orgFields.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
+  };
+
+  const handleOrgLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileFormData = new FormData();
+    fileFormData.append("file", file);
+
+    const promise = fetch("/api/upload-image", {
+      method: "POST",
+      body: fileFormData,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to upload logo");
+      setOrgLogo(data.secure_url);
+      return data;
+    });
+
+    await toast.promise(promise, {
+      pending: "Uploading organization logo...",
+      success: "Logo uploaded successfully!",
+      error: "Failed to upload logo",
+    });
+  };
+
+  const handleCreateOrganization = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgName.trim()) {
+      toast.error("Organization Name is required");
+      return;
+    }
+
+    setCreatingOrg(true);
+    try {
+      const additionalInfo: Record<string, string> = {};
+      orgFields.forEach((field) => {
+        if (field.key.trim() && field.value.trim()) {
+          additionalInfo[field.key.trim()] = field.value.trim();
+        }
+      });
+
+      const res = await fetch("/api/organization/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: orgName,
+          logo: orgLogo,
+          address: orgAddress,
+          additionalInfo,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Organization created successfully!");
+        fetchUserData(); // Reload profile details
+        fetchEmployees(); // Reload employees list
+      } else {
+        toast.error(data.message || "Failed to create organization");
+      }
+    } catch (error) {
+      toast.error("Failed to create organization");
+    } finally {
+      setCreatingOrg(false);
+    }
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -615,19 +700,13 @@ export default function ProfilePage() {
 
           <div className="w-full px-2 pt-2 space-y-3">
             {!isEditing && (
-              <div className="flex gap-3 w-full">
-                <CompleteProfileSheet
-                  userData={userData}
-                  onUpdate={fetchUserData}
-                />
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all whitespace-nowrap"
-                >
-                  <Pencil className="h-4 w-4" />
-                  Edit Profile
-                </button>
-              </div>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all whitespace-nowrap"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Profile
+              </button>
             )}
             {!isEditing && <SignOutButton />}
           </div>
