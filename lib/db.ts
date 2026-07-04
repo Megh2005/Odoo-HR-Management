@@ -34,24 +34,16 @@ export async function connectToDatabase() {
                 const opts = {
                     bufferCommands: false,
                     dbName: MONGODB_DB,
-                    serverSelectionTimeoutMS: 10000,
+                    serverSelectionTimeoutMS: 5000,
                     socketTimeoutMS: 45000,
-                    connectTimeoutMS: 10000,
-                    maxPoolSize: 10,
-                    minPoolSize: 2,
-                    family: 4, // Force IPv4
-                    retryWrites: true,
-                    retryReads: true,
                 };
-                console.log("🔄 Attempting Mongoose connection...");
                 cachedMongoose.promise = mongoose.connect(finalUri, opts).then((m) => m);
             } catch (error) {
-                console.error("❌ Mongoose connection error:", error);
+                console.error("Mongoose connection error:", error);
                 throw error;
             }
         }
         cachedMongoose.conn = await cachedMongoose.promise;
-        console.log("✅ Mongoose connection successful");
     }
 
     // 2. Handle Native MongoDB connection (cached)
@@ -60,17 +52,11 @@ export async function connectToDatabase() {
     }
 
     try {
-        console.log("🔄 Attempting MongoDB Native connection...");
         const client = new MongoClient(finalUri, {
-            serverSelectionTimeoutMS: 10000,
+            serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
-            connectTimeoutMS: 10000,
-            maxPoolSize: 10,
-            minPoolSize: 2,
-            family: 4, // Force IPv4
             retryWrites: true,
             retryReads: true,
-            waitQueueTimeoutMS: 10000,
         });
 
         await client.connect();
@@ -78,7 +64,7 @@ export async function connectToDatabase() {
 
         // Test the connection
         await db.admin().ping();
-        console.log("✅ MongoDB Native connection successful");
+        console.log("✓ MongoDB connection successful");
 
         cachedClient = client;
         cachedDb = db;
@@ -87,31 +73,8 @@ export async function connectToDatabase() {
 
         return { client, db, mongoose: cachedMongoose.conn };
     } catch (error) {
-        console.error("❌ MongoDB connection failed:", error);
-        
-        // Provide helpful error messages
-        if (error instanceof Error) {
-            if (error.message.includes("ECONNREFUSED")) {
-                throw new Error(
-                    "MongoDB connection refused. Please check:\n" +
-                    "1. MongoDB cluster is running\n" +
-                    "2. Network/Internet connection is active\n" +
-                    "3. Firewall allows MongoDB connections\n" +
-                    "4. MongoDB URI is correct\n" +
-                    `Error: ${error.message}`
-                );
-            } else if (error.message.includes("ENOTFOUND") || error.message.includes("querySrv")) {
-                throw new Error(
-                    "DNS resolution failed for MongoDB cluster. Please check:\n" +
-                    "1. Internet connection is active\n" +
-                    "2. DNS is working properly\n" +
-                    "3. MongoDB URI is correct\n" +
-                    "4. Firewall/VPN allows DNS queries\n" +
-                    `Error: ${error.message}`
-                );
-            }
-        }
-        throw error;
+        console.error("MongoDB connection failed:", error);
+        throw new Error(`Failed to connect to MongoDB: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
@@ -120,7 +83,7 @@ export const clientPromise = (async () => {
         const { client } = await connectToDatabase();
         return client;
     } catch (error) {
-        console.error("❌ clientPromise error:", error);
+        console.error("clientPromise error:", error);
         throw error;
     }
 })();
@@ -131,7 +94,7 @@ export function getSafeId(id: string) {
             return new mongoose.Types.ObjectId(id);
         }
     } catch (error) {
-        console.error("❌ getSafeId error:", error);
+        console.error("getSafeId error:", error);
     }
     return id;
 }
