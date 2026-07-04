@@ -222,7 +222,16 @@ export default function AuthPage() {
 
           await toast.promise(promise, {
             pending: "Sending verification code...",
-            success: "Verification code sent!",
+            success: {
+              render() {
+                return (
+                  <div>
+                    <p className="font-bold">Verification code sent!</p>
+                    <p className="text-sm mt-1">📧 Check your inbox. If you don't see it, please check your spam folder.</p>
+                  </div>
+                );
+              },
+            },
             error: {
               render({ data }: any) {
                 return data?.message || "Something went wrong";

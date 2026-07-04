@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
 
       if (!res.ok) throw new Error(data.message);
 
-      toast.success("Password reset email sent! Please check your inbox.");
+      toast.success("Password reset email sent! Please check your inbox. If you don't see it, check your spam folder.");
       router.push("/auth");
     } catch (error: any) {
       toast.error(error.message || "Verification failed");

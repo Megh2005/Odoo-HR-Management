@@ -102,7 +102,7 @@ export default function OrganizationDashboard() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success("Employee added successfully!");
+        toast.success("Employee added successfully! 📧 They've been sent an invitation email - remind them to check their spam folder if they don't see it.");
         setNewEmployeeName("");
         setNewEmployeeEmail("");
         setEmpJoiningYear("");

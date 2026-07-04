@@ -209,6 +209,10 @@ export const sendOrganizationCreationEmail = async (org: any, hrUser: any) => {
               </table>
             </div>
 
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">📧 <strong>Important:</strong> Check your spam folder if you don't receive emails from us. Important notifications might end up there!</p>
+            </div>
+
             <div style="text-align: center; margin-top: 30px;">
               <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/organization/dashboard" style="background-color: #0c4a6e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; border: 2px solid #0f172a; display: inline-block;">Go to Organization Dashboard</a>
             </div>
@@ -251,6 +255,10 @@ export const sendEmployeeAdditionEmail = async (employee: any, org: any, hrUser:
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
               <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Your Unique Employee ID</p>
               <h2 style="margin: 0; font-size: 28px; color: #0c4a6e; font-weight: 800; letter-spacing: 1px;">${employee.employeeId}</h2>
+            </div>
+
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">📧 <strong>Important:</strong> Check your spam folder if you don't receive future emails from us. Important notifications might end up there!</p>
             </div>
 
             <h3 style="font-size: 15px; color: #0f172a; margin-top: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">How to Activate Your Account:</h3>
