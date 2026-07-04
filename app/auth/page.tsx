@@ -35,20 +35,20 @@ export default function AuthPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "authenticated") {
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            router.push("/dashboard");
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
+    if (status !== "authenticated") return;
+
+    const timer = window.setInterval(() => {
+      setCountdown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [status]);
+
+  useEffect(() => {
+    if (status === "authenticated" && countdown === 0) {
+      router.replace("/dashboard");
     }
-  }, [status, router]);
+  }, [status, countdown, router]);
   const [formData, setFormData] = useState({
     signinEmail: "",
     signinPassword: "",

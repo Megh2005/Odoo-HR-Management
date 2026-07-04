@@ -1,0 +1,6 @@
+allowBuilds:
+  '@firebase/util': true
+  core-js: true
+  msw: true
+  protobufjs: true
+  sharp: true
