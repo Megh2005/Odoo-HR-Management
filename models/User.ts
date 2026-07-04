@@ -66,6 +66,44 @@ const UserSchema = new mongoose.Schema(
             type: [String],
             default: [],
         },
+        // ── Security / Private Info fields ──────────────────────────────
+        dateOfBirth: {
+            type: String,
+        },
+        residingAddress: {
+            type: String,
+        },
+        nationality: {
+            type: String,
+        },
+        personalEmail: {
+            type: String,
+        },
+        maritalStatus: {
+            type: String,
+            enum: ["single", "married", "divorced", "widowed"],
+        },
+        dateOfJoining: {
+            type: String,
+        },
+        bankAccountNumber: {
+            type: String,
+        },
+        bankName: {
+            type: String,
+        },
+        ifscCode: {
+            type: String,
+        },
+        panNo: {
+            type: String,
+        },
+        uanNo: {
+            type: String,
+        },
+        empCode: {
+            type: String,
+        },
     },
     {
         timestamps: true,

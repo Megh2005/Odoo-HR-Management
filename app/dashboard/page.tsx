@@ -20,10 +20,12 @@ import {
   Sparkles,
   ArrowRight,
   ShieldAlert,
-  Upload
+  Upload,
+  Search,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { Label } from "@/components/ui/label";
+import { Country } from "country-state-city";
 import { Input } from "@/components/ui/input";
 
 export default function Dashboard() {
@@ -581,7 +583,23 @@ export default function Dashboard() {
 }
 
 // ─── Employee Tabs Component ──────────────────────────────────────────────────
-type EmpTab = "overview" | "salary" | "attendance";
+type EmpTab = "overview" | "salary" | "attendance" | "security";
+
+interface SecurityForm {
+  dateOfBirth: string;
+  residingAddress: string;
+  nationality: string;
+  personalEmail: string;
+  gender: string;
+  maritalStatus: string;
+  dateOfJoining: string;
+  bankAccountNumber: string;
+  bankName: string;
+  ifscCode: string;
+  panNo: string;
+  uanNo: string;
+  empCode: string;
+}
 
 function EmployeeTabs({
   userData,
@@ -602,6 +620,91 @@ function EmployeeTabs({
   const [salary, setSalary] = useState<any>(null);
   const [loadingSalary, setLoadingSalary] = useState(false);
   const [salaryFetched, setSalaryFetched] = useState(false);
+
+  // ── Security form state ──
+  const [securityForm, setSecurityForm] = useState<SecurityForm>({
+    dateOfBirth: userData.dateOfBirth || "",
+    residingAddress: userData.residingAddress || "",
+    nationality: userData.nationality || "",
+    personalEmail: userData.personalEmail || userData.email || "",
+    gender: userData.gender || "",
+    maritalStatus: userData.maritalStatus || "",
+    dateOfJoining: userData.dateOfJoining || "",
+    bankAccountNumber: userData.bankAccountNumber || "",
+    bankName: userData.bankName || "",
+    ifscCode: userData.ifscCode || "",
+    panNo: userData.panNo || "",
+    uanNo: userData.uanNo || "",
+    empCode: userData.empCode || userData.employeeId || "",
+  });
+  const [savingSecurity, setSavingSecurity] = useState(false);
+
+  // ── Address autocomplete state ──
+  const [addressInput, setAddressInput] = useState(userData.residingAddress || "");
+  const [addressPredictions, setAddressPredictions] = useState<any[]>([]);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+
+  // ── Country list for nationality dropdown ──
+  const allCountries = Country.getAllCountries();
+
+  const handleSecurityChange = (field: keyof SecurityForm, value: string) => {
+    setSecurityForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveSecurity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSecurity(true);
+    try {
+      const res = await fetch("/api/profile/update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(securityForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Security info saved successfully!");
+      } else {
+        toast.error(data.message || "Failed to save");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setSavingSecurity(false);
+    }
+  };
+
+  // ── Address autocomplete handlers ──
+  const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setAddressInput(val);
+    handleSecurityChange("residingAddress", val);
+    if (!val.trim()) { setAddressPredictions([]); return; }
+    try {
+      const res = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(val)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAddressPredictions(data.predictions || []);
+        setShowAddressDropdown(true);
+      }
+    } catch { /* silent */ }
+  };
+
+  const handleAddressPredictionSelect = async (p: any) => {
+    setAddressInput(p.description);
+    handleSecurityChange("residingAddress", p.description);
+    setAddressPredictions([]);
+    setShowAddressDropdown(false);
+    try {
+      const res = await fetch(`/api/maps/details?placeId=${p.place_id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.result?.formatted_address) {
+          setAddressInput(data.result.formatted_address);
+          handleSecurityChange("residingAddress", data.result.formatted_address);
+        }
+      }
+    } catch { /* silent */ }
+  };
 
   // Fetch salary lazily when tab opens
   useEffect(() => {
@@ -628,6 +731,7 @@ function EmployeeTabs({
     { id: "overview", label: "Overview" },
     { id: "salary", label: "Salary" },
     { id: "attendance", label: "Attendance" },
+    { id: "security", label: "Security" },
   ];
 
   return (
@@ -922,6 +1026,243 @@ function EmployeeTabs({
               </div>
             </div>
           )}
+        </Card>
+      )}
+
+      {/* ── SECURITY TAB (editable by employee) ── */}
+      {activeTab === "security" && (
+        <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl overflow-hidden">
+          {/* Header banner */}
+          <div className="bg-sky-900 px-5 py-4 border-b-2 border-slate-900">
+            <h3 className="text-sm font-black text-white tracking-wide">Security &amp; Private Information</h3>
+            <p className="text-[10px] text-sky-200 font-medium mt-0.5">
+              This information is private. HR can view it but cannot edit it.
+            </p>
+          </div>
+
+          <form onSubmit={handleSaveSecurity} className="p-5 space-y-6">
+
+            {/* ── Personal Details ── */}
+            <div>
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 pb-1 border-b border-slate-100">
+                Personal Details
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={securityForm.dateOfBirth}
+                    onChange={(e) => handleSecurityChange("dateOfBirth", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Gender</label>
+                  <select
+                    value={securityForm.gender}
+                    onChange={(e) => handleSecurityChange("gender", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="non binary">Non Binary</option>
+                  </select>
+                </div>
+
+                {/* Nationality — country dropdown */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Nationality</label>
+                  <select
+                    value={securityForm.nationality}
+                    onChange={(e) => handleSecurityChange("nationality", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  >
+                    <option value="">Select nationality</option>
+                    {allCountries.map((c) => (
+                      <option key={c.isoCode} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Marital Status</label>
+                  <select
+                    value={securityForm.maritalStatus}
+                    onChange={(e) => handleSecurityChange("maritalStatus", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  >
+                    <option value="">Select status</option>
+                    <option value="single">Single</option>
+                    <option value="married">Married</option>
+                    <option value="divorced">Divorced</option>
+                    <option value="widowed">Widowed</option>
+                  </select>
+                </div>
+
+                {/* Personal Email — auto-filled from account email, editable */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Personal Email
+                    <span className="ml-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 normal-case">auto-filled</span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="personal@example.com"
+                    value={securityForm.personalEmail}
+                    onChange={(e) => handleSecurityChange("personalEmail", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Date of Joining</label>
+                  <input
+                    type="date"
+                    value={securityForm.dateOfJoining}
+                    onChange={(e) => handleSecurityChange("dateOfJoining", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  />
+                </div>
+
+                {/* Residing Address — Google Maps autocomplete, full width */}
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Residing Address</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Start typing your address..."
+                      value={addressInput}
+                      onChange={handleAddressInputChange}
+                      onFocus={() => addressPredictions.length > 0 && setShowAddressDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowAddressDropdown(false), 150)}
+                      className="w-full border-2 border-slate-900 rounded-lg pl-9 pr-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                    />
+                    {showAddressDropdown && addressPredictions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border-2 border-slate-900 rounded-lg shadow-xl max-h-52 overflow-y-auto divide-y divide-slate-100">
+                        {addressPredictions.map((p) => (
+                          <button
+                            key={p.place_id}
+                            type="button"
+                            onMouseDown={() => handleAddressPredictionSelect(p)}
+                            className="w-full text-left px-3 py-2.5 hover:bg-sky-50 transition-colors text-xs font-semibold text-slate-800 flex items-start gap-2"
+                          >
+                            <MapPin className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
+                            <span>{p.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Map preview */}
+                  {securityForm.residingAddress && (
+                    <div className="mt-2 border-2 border-slate-900 rounded-lg overflow-hidden h-[200px] w-full shadow bg-slate-100">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_MAPS_API_KEY}&q=${encodeURIComponent(securityForm.residingAddress)}`}
+                      />
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+            {/* ── Bank Details ── */}
+            <div>
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 pb-1 border-b border-slate-100">
+                Bank Details
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Account Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 1234567890"
+                    value={securityForm.bankAccountNumber}
+                    onChange={(e) => handleSecurityChange("bankAccountNumber", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Bank Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. State Bank of India"
+                    value={securityForm.bankName}
+                    onChange={(e) => handleSecurityChange("bankName", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">IFSC Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SBIN0001234"
+                    value={securityForm.ifscCode}
+                    onChange={(e) => handleSecurityChange("ifscCode", e.target.value.toUpperCase())}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition uppercase"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">PAN No</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ABCDE1234F"
+                    value={securityForm.panNo}
+                    onChange={(e) => handleSecurityChange("panNo", e.target.value.toUpperCase())}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition uppercase"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">UAN No</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 100123456789"
+                    value={securityForm.uanNo}
+                    onChange={(e) => handleSecurityChange("uanNo", e.target.value)}
+                    className="w-full border-2 border-slate-900 rounded-lg px-3 py-2 text-xs font-semibold bg-white focus:outline-none focus:border-sky-900 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    Emp Code
+                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 normal-case">auto-filled · read only</span>
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={securityForm.empCode}
+                    className="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold bg-slate-50 text-slate-500 cursor-not-allowed select-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingSecurity}
+              className="w-full flex items-center justify-center gap-2 rounded-lg py-3 font-bold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 transition-all text-sm disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+            >
+              {savingSecurity ? "Saving..." : "Save Security Info"}
+            </button>
+          </form>
         </Card>
       )}
     </div>

@@ -57,6 +57,41 @@ export async function PATCH(req: NextRequest) {
             updateData.isAddressUpdated = true;
         }
 
+        // ── Security / Private Info fields (employee self-edit) ──────────
+        const {
+            dateOfBirth,
+            residingAddress,
+            nationality,
+            personalEmail,
+            maritalStatus,
+            dateOfJoining,
+            bankAccountNumber,
+            bankName,
+            ifscCode,
+            panNo,
+            uanNo,
+            empCode,
+        } = body;
+
+        if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth;
+        if (residingAddress !== undefined) updateData.residingAddress = residingAddress;
+        if (nationality !== undefined) updateData.nationality = nationality;
+        if (personalEmail !== undefined) updateData.personalEmail = personalEmail;
+        if (maritalStatus !== undefined) {
+            const validStatuses = ["single", "married", "divorced", "widowed"];
+            if (maritalStatus && !validStatuses.includes(maritalStatus)) {
+                return NextResponse.json({ message: "Invalid marital status" }, { status: 400 });
+            }
+            updateData.maritalStatus = maritalStatus;
+        }
+        if (dateOfJoining !== undefined) updateData.dateOfJoining = dateOfJoining;
+        if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber;
+        if (bankName !== undefined) updateData.bankName = bankName;
+        if (ifscCode !== undefined) updateData.ifscCode = ifscCode;
+        if (panNo !== undefined) updateData.panNo = panNo;
+        if (uanNo !== undefined) updateData.uanNo = uanNo;
+        if (empCode !== undefined) updateData.empCode = empCode;
+
         // Update user in database
         const updatedUser = await updateUser(session.user.id, updateData);
 

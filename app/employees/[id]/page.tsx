@@ -117,7 +117,7 @@ function SalaryField({
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-type Tab = "overview" | "attendance" | "salary";
+type Tab = "overview" | "attendance" | "salary" | "security";
 
 export default function EmployeeDetailPage() {
   const { data: session, status } = useSession();
@@ -492,16 +492,18 @@ export default function EmployeeDetailPage() {
         <div className="border-2 border-slate-900 rounded-xl bg-white/95 overflow-hidden shadow-lg">
           {/* Tab bar */}
           <div className="flex border-b-2 border-slate-900 bg-slate-50">
-            {(["overview", "attendance", "salary"] as Tab[]).map((tab) => {
+            {(["overview", "attendance", "salary", "security"] as Tab[]).map((tab) => {
               const icons: Record<Tab, React.ReactNode> = {
                 overview: <User size={13} />,
                 attendance: <Calendar size={13} />,
                 salary: <IndianRupee size={13} />,
+                security: <Briefcase size={13} />,
               };
               const labels: Record<Tab, string> = {
                 overview: "Overview",
                 attendance: "Attendance",
                 salary: "Salary Structure",
+                security: "Security",
               };
               return (
                 <button
@@ -696,6 +698,90 @@ export default function EmployeeDetailPage() {
                   {savingSalary ? "Saving..." : "Save Salary Structure"}
                 </button>
               </form>
+            )}
+
+            {/* ── SECURITY (read-only for HR) ── */}
+            {activeTab === "security" && (
+              <div className="space-y-6">
+
+                {/* Notice banner */}
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 text-xs font-semibold text-amber-800">
+                  <span className="mt-0.5">🔒</span>
+                  <span>This information was provided by the employee. HR can view it but cannot make changes.</span>
+                </div>
+
+                {/* ── Personal Details ── */}
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 pb-1 border-b border-slate-100">
+                    Personal Details
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { label: "Date of Birth", value: employee.dateOfBirth || "—" },
+                      { label: "Gender", value: employee.gender || "—" },
+                      { label: "Nationality", value: employee.nationality || "—" },
+                      { label: "Personal Email", value: employee.personalEmail || "—" },
+                      { label: "Marital Status", value: employee.maritalStatus || "—" },
+                      { label: "Date of Joining", value: employee.dateOfJoining || "—" },
+                    ].map((item) => (
+                      <div key={item.label} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                          {item.label}
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 capitalize break-all">{item.value}</span>
+                      </div>
+                    ))}
+
+                    {/* Residing Address — full width with map */}
+                    <div className="col-span-2 sm:col-span-3 border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
+                        Residing Address
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 block">
+                        {employee.residingAddress || "—"}
+                      </span>
+                      {employee.residingAddress && (
+                        <div className="mt-2 border-2 border-slate-300 rounded-lg overflow-hidden h-[180px] w-full bg-slate-100">
+                          <iframe
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            loading="lazy"
+                            allowFullScreen
+                            referrerPolicy="no-referrer-when-downgrade"
+                            src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_MAPS_API_KEY}&q=${encodeURIComponent(employee.residingAddress)}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Bank Details ── */}
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 pb-1 border-b border-slate-100">
+                    Bank Details
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { label: "Account Number", value: employee.bankAccountNumber || "—" },
+                      { label: "Bank Name", value: employee.bankName || "—" },
+                      { label: "IFSC Code", value: employee.ifscCode || "—" },
+                      { label: "PAN No", value: employee.panNo || "—" },
+                      { label: "UAN No", value: employee.uanNo || "—" },
+                      { label: "Emp Code", value: employee.empCode || "—" },
+                    ].map((item) => (
+                      <div key={item.label} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                          {item.label}
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 uppercase break-all">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
             )}
           </div>
         </div>
