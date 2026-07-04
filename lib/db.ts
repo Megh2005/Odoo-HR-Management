@@ -6,8 +6,16 @@ const MONGODB_DB = "hrspecs";
 
 if (!MONGODB_URI) {
     throw new Error(
-        "Please define the MONGODB_URI"
+        "Please define the MONGODB_URI environment variable"
     );
+}
+
+// Ensure the URI has proper query parameters
+let finalUri = MONGODB_URI;
+if (!finalUri.includes("?")) {
+    finalUri += "/?retryWrites=true&w=majority";
+} else if (!finalUri.includes("retryWrites")) {
+    finalUri += "&retryWrites=true&w=majority";
 }
 
 let cachedClient: MongoClient | null = (global as any).mongoClient || null;
@@ -22,39 +30,71 @@ export async function connectToDatabase() {
     // 1. Handle Mongoose connection
     if (!cachedMongoose.conn) {
         if (!cachedMongoose.promise) {
-            const opts = {
-                bufferCommands: false,
-                dbName: MONGODB_DB,
-            };
-            cachedMongoose.promise = mongoose.connect(MONGODB_URI!, opts).then((m) => m);
+            try {
+                const opts = {
+                    bufferCommands: false,
+                    dbName: MONGODB_DB,
+                    serverSelectionTimeoutMS: 5000,
+                    socketTimeoutMS: 45000,
+                };
+                cachedMongoose.promise = mongoose.connect(finalUri, opts).then((m) => m);
+            } catch (error) {
+                console.error("Mongoose connection error:", error);
+                throw error;
+            }
         }
         cachedMongoose.conn = await cachedMongoose.promise;
     }
 
-    // 2. Handle Native MongoDB connection
+    // 2. Handle Native MongoDB connection (cached)
     if (cachedClient && cachedDb) {
         return { client: cachedClient, db: cachedDb, mongoose: cachedMongoose.conn };
     }
 
-    const client = await MongoClient.connect(MONGODB_URI as string);
-    const db = client.db(MONGODB_DB);
+    try {
+        const client = new MongoClient(finalUri, {
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+            retryWrites: true,
+            retryReads: true,
+        });
 
-    cachedClient = client;
-    cachedDb = db;
-    (global as any).mongoClient = client;
-    (global as any).mongoDb = db;
+        await client.connect();
+        const db = client.db(MONGODB_DB);
 
-    return { client, db, mongoose: cachedMongoose.conn };
+        // Test the connection
+        await db.admin().ping();
+        console.log("✓ MongoDB connection successful");
+
+        cachedClient = client;
+        cachedDb = db;
+        (global as any).mongoClient = client;
+        (global as any).mongoDb = db;
+
+        return { client, db, mongoose: cachedMongoose.conn };
+    } catch (error) {
+        console.error("MongoDB connection failed:", error);
+        throw new Error(`Failed to connect to MongoDB: ${error instanceof Error ? error.message : String(error)}`);
+    }
 }
 
 export const clientPromise = (async () => {
-    const { client } = await connectToDatabase();
-    return client;
+    try {
+        const { client } = await connectToDatabase();
+        return client;
+    } catch (error) {
+        console.error("clientPromise error:", error);
+        throw error;
+    }
 })();
 
 export function getSafeId(id: string) {
-    if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
-        return new mongoose.Types.ObjectId(id);
+    try {
+        if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+            return new mongoose.Types.ObjectId(id);
+        }
+    } catch (error) {
+        console.error("getSafeId error:", error);
     }
     return id;
 }
