@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MdHome, MdDashboard, MdPerson, MdBusiness, MdGroup, MdLogin, MdLogout } from "react-icons/md";
+import { MdHome, MdDashboard, MdPerson, MdBusiness, MdGroup, MdLogin, MdLogout, MdInfo } from "react-icons/md";
 
 export default function DockNav() {
   const { data: session, status } = useSession();
@@ -32,6 +32,12 @@ export default function DockNav() {
       icon: MdDashboard,
       href: "/dashboard",
       show: status === "authenticated",
+    },
+    {
+      name: "About",
+      icon: MdInfo,
+      href: "/about",
+      show: true,
     },
     {
       name: "Employees",
@@ -107,7 +113,7 @@ export default function DockNav() {
               <Tooltip key={item.name}>
                 <TooltipTrigger asChild>
                   {item.isLogout ? (
-                    <button onClick={() => signOut()}>
+                    <button type="button" aria-label="Logout" onClick={() => signOut()}>
                       <DockItem item={item} isActive={false} isLogout={true} />
                     </button>
                   ) : (
