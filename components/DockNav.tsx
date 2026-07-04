@@ -22,7 +22,8 @@ import {
   MdInfo, 
   MdLock,
   MdMenu,
-  MdClose
+  MdClose,
+  MdCalendarToday
 } from "react-icons/md";
 
 export default function DockNav() {
@@ -62,6 +63,20 @@ export default function DockNav() {
       href: hasOrg ? "/organization/dashboard" : (isHR ? "/organization/create" : "/organization/dashboard"),
       show: status === "authenticated",
       group: "org",
+    },
+    {
+      name: "Apply Leave",
+      icon: MdCalendarToday,
+      href: "/leaves",
+      show: status === "authenticated" && !isHR,
+      group: "main",
+    },
+    {
+      name: "Leave Requests",
+      icon: MdCalendarToday,
+      href: "/hr/leaves",
+      show: status === "authenticated" && isHR,
+      group: "hr",
     },
   ];
 

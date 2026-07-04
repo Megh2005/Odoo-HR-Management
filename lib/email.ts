@@ -289,3 +289,230 @@ export const sendEmployeeAdditionEmail = async (employee: any, org: any, hrUser:
     console.error("Error sending employee addition email:", error);
   }
 };
+
+// ── Leave Request Emails ──────────────────────────────────────────────────────
+
+export const sendLeaveRequestEmail = async (org: any, employee: any, leaveRequest: any, type: "request" | "approval" | "rejection") => {
+  try {
+    const startDate = new Date(leaveRequest.startDate).toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    
+    const endDate = new Date(leaveRequest.endDate).toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const leaveTypeLabel = {
+      casual: "Casual Leave",
+      medical: "Medical Leave",
+      maternity: "Maternity Leave",
+      other: "Other Leave",
+    }[leaveRequest.leaveType] || leaveRequest.leaveType;
+
+    // Get all HR users in organization
+    const { collection, query, where, getDocs } = await import("firebase/firestore");
+    const { db } = await import("@/lib/firebase");
+    
+    const usersRef = collection(db, "users");
+    const hrQuery = query(
+      usersRef,
+      where("organizationId", "==", org.id),
+      where("role", "==", "hr")
+    );
+    const hrDocs = await getDocs(hrQuery);
+    const hrEmails = hrDocs.docs.map(doc => doc.data().email).filter(Boolean);
+
+    const mailOptions = {
+      from: `"${org.name} HR" <${process.env.SMTP_USER}>`,
+      to: hrEmails.length > 0 ? hrEmails.join(", ") : process.env.SMTP_USER,
+      subject: `New Leave Request from ${employee.name} - ${leaveTypeLabel}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #0c4a6e 0%, #0f172a 100%); padding: 30px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800;">New Leave Request</h1>
+            <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.9;">Please review and take action</p>
+          </div>
+          
+          <div style="padding: 30px;">
+            <p style="font-size: 15px; color: #0f172a; margin-top: 0;"><strong>${employee.name}</strong> has submitted a leave request.</p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 25px 0;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Employee</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 600;">${employee.name}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Leave Type</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 600;">${leaveTypeLabel}</p>
+                </div>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Start Date</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a;">${startDate}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">End Date</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a;">${endDate}</p>
+                </div>
+              </div>
+
+              <div>
+                <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Duration</p>
+                <p style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 600;">${leaveRequest.duration} day(s)</p>
+              </div>
+
+              ${leaveRequest.reason ? `
+              <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+                <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Reason</p>
+                <p style="margin: 0; font-size: 14px; color: #0f172a; line-height: 1.5;">${leaveRequest.reason}</p>
+              </div>
+              ` : ""}
+            </div>
+
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">Check your spam folder if you don't receive future emails. Important notifications might end up there.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/organization/dashboard?tab=requests" style="background-color: #0c4a6e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; border: 2px solid #0f172a; display: inline-block;">Review Request</a>
+            </div>
+          </div>
+
+          <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} ${org.name}. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Leave request email sent successfully");
+  } catch (error) {
+    console.error("Error sending leave request email:", error);
+    throw error;
+  }
+};
+
+export const sendLeaveResponseEmail = async (orgId: string, employee: any, leaveRequest: any, status: "approved" | "rejected", remarks?: string) => {
+  try {
+    const { doc, getDoc } = await import("firebase/firestore");
+    const { db } = await import("@/lib/firebase");
+
+    const orgRef = doc(db, "organizations", orgId);
+    const orgSnap = await getDoc(orgRef);
+    const org = orgSnap.exists() ? orgSnap.data() : null;
+
+    if (!org) {
+      throw new Error("Organization not found");
+    }
+
+    const startDate = new Date(leaveRequest.startDate).toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    
+    const endDate = new Date(leaveRequest.endDate).toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const leaveTypeLabel = {
+      casual: "Casual Leave",
+      medical: "Medical Leave",
+      maternity: "Maternity Leave",
+      other: "Other Leave",
+    }[leaveRequest.leaveType] || leaveRequest.leaveType;
+
+    const statusColor = status === "approved" ? "#059669" : "#dc2626";
+    const statusBg = status === "approved" ? "#ecfdf5" : "#fef2f2";
+    const statusBorder = status === "approved" ? "#d1fae5" : "#fee2e2";
+    const statusText = status === "approved" ? "Leave Approved" : "Leave Rejected";
+
+    const mailOptions = {
+      from: `"${org.name} HR" <${process.env.SMTP_USER}>`,
+      to: employee.email,
+      subject: `Leave Request ${status === "approved" ? "Approved" : "Rejected"} - ${leaveTypeLabel}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); padding: 30px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800;">${statusText}</h1>
+            <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.9;">Your leave request has been ${status}</p>
+          </div>
+          
+          <div style="padding: 30px;">
+            <p style="font-size: 15px; color: #0f172a; margin-top: 0;">Hi <strong>${employee.name}</strong>,</p>
+            <p style="font-size: 14px; color: #475569; line-height: 1.6;">Your leave request has been ${status} by the HR team.</p>
+            
+            <div style="background-color: ${statusBg}; border: 1px solid ${statusBorder}; border-radius: 12px; padding: 20px; margin: 25px 0;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Leave Type</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 600;">${leaveTypeLabel}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Duration</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 600;">${leaveRequest.duration} day(s)</p>
+                </div>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Start Date</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a;">${startDate}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">End Date</p>
+                  <p style="margin: 0; font-size: 14px; color: #0f172a;">${endDate}</p>
+                </div>
+              </div>
+
+              ${remarks ? `
+              <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid ${statusBorder};">
+                <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Remarks</p>
+                <p style="margin: 0; font-size: 14px; color: #0f172a; line-height: 1.5;">${remarks}</p>
+              </div>
+              ` : ""}
+            </div>
+
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">Check your spam folder if you don't receive future emails. Important notifications might end up there.</p>
+            </div>
+
+            ${status === "approved" ? `
+            <div style="background-color: #f0fdf4; border: 1px solid #dcfce7; border-radius: 12px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 13px; color: #166534;"><strong>Your leave dates have been automatically marked in the attendance system.</strong></p>
+            </div>
+            ` : ""}
+
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/dashboard" style="background-color: #0c4a6e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; border: 2px solid #0f172a; display: inline-block;">View Dashboard</a>
+            </div>
+          </div>
+
+          <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} ${org.name}. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Leave ${status} email sent successfully to`, employee.email);
+  } catch (error) {
+    console.error("Error sending leave response email:", error);
+    throw error;
+  }
+};
