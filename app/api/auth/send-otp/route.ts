@@ -6,7 +6,7 @@ import crypto from "crypto";
 
 export async function POST(req: Request) {
     try {
-        const { email } = await req.json();
+        const { email, name, role } = await req.json();
 
         if (!email) {
             return NextResponse.json(
@@ -17,13 +17,35 @@ export async function POST(req: Request) {
 
         await connectToDatabase();
 
-        // Check if user already exists
         const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return NextResponse.json(
-                { message: "User already exists with this email" },
-                { status: 400 }
-            );
+
+        if (role === "employee") {
+            if (!existingUser) {
+                return NextResponse.json(
+                    { message: "No employee account exists with this email. Please contact your HR." },
+                    { status: 400 }
+                );
+            }
+            if (existingUser.status === "active") {
+                return NextResponse.json(
+                    { message: "Account is already active. Please sign in." },
+                    { status: 400 }
+                );
+            }
+            if (name && existingUser.name.toLowerCase().trim() !== name.toLowerCase().trim()) {
+                return NextResponse.json(
+                    { message: "Provided name does not match the registered employee name." },
+                    { status: 400 }
+                );
+            }
+        } else {
+            // HR registration
+            if (existingUser) {
+                return NextResponse.json(
+                    { message: "User already exists with this email" },
+                    { status: 400 }
+                );
+            }
         }
 
         // Generate 8-digit OTP
@@ -66,7 +88,7 @@ export async function POST(req: Request) {
         await transporter.sendMail(mailOptions);
 
         return NextResponse.json(
-            { message: "OTP sent successfully", hash: token },
+            { message: "OTP sent successfully", hash: token, isPreCreatedEmployee: role === "employee" },
             { status: 200 }
         );
     } catch (error: any) {

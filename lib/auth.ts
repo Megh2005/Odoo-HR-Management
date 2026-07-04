@@ -36,12 +36,16 @@ export const authOptions: NextAuthOptions = {
                     email: user.email,
                     avatar: user.avatar,
                     gender: user.gender,
+                    employeeId: user.employeeId,
+                    role: user.role,
+                    organizationId: user.organizationId ? user.organizationId.toString() : undefined,
                 };
             },
         }),
     ],
     session: {
         strategy: "jwt",
+        maxAge: 24 * 60 * 60, // 24 hours
     },
     secret: process.env.NEXTAUTH_SECRET,
     pages: {
@@ -53,8 +57,9 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.avatar = user.avatar;
                 token.gender = user.gender;
-                token.avatar = user.avatar;
-                token.gender = user.gender;
+                token.employeeId = user.employeeId;
+                token.role = user.role;
+                token.organizationId = user.organizationId;
             }
 
             // Session update triggered - fetch fresh data from database
@@ -67,7 +72,9 @@ export const authOptions: NextAuthOptions = {
                     token.email = freshUser.email;
                     token.avatar = freshUser.avatar;
                     token.gender = freshUser.gender;
-                    token.gender = freshUser.gender;
+                    token.employeeId = freshUser.employeeId;
+                    token.role = freshUser.role;
+                    token.organizationId = freshUser.organizationId ? freshUser.organizationId.toString() : undefined;
                 }
             }
 
@@ -78,7 +85,9 @@ export const authOptions: NextAuthOptions = {
                 session.user.id = token.sub;
                 session.user.avatar = token.avatar;
                 session.user.gender = token.gender;
-                session.user.gender = token.gender;
+                session.user.employeeId = token.employeeId;
+                session.user.role = token.role;
+                session.user.organizationId = token.organizationId;
             }
             return session;
         },

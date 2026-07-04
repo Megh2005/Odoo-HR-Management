@@ -1,14 +1,28 @@
 import { NextResponse } from "next/server";
 import { validateEmail, validatePassword } from "@/lib/validations";
-import { createUser, getUserByEmail, hashPassword } from "@/lib/services";
 import { connectToDatabase } from "@/lib/db";
+import User from "@/models/User";
+import Organization from "@/models/Organization";
+import { hashPassword } from "@/lib/services";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
     try {
-        const { name, email, password, gender, otp, hash } = await req.json();
+        const { 
+            name, 
+            email, 
+            password, 
+            gender, 
+            otp, 
+            hash, 
+            role,
+            orgName,
+            orgLogo,
+            orgAddress,
+            orgAdditionalInfo
+        } = await req.json();
 
-        if (!name || !email || !password || !gender || !otp || !hash) {
+        if (!email || !otp || !hash || !role) {
             return NextResponse.json(
                 { message: "Missing required fields" },
                 { status: 400 }
@@ -20,27 +34,17 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: emailError }, { status: 400 });
         }
 
-        const passwordError = validatePassword(password);
-        if (passwordError) {
-            return NextResponse.json({ message: passwordError }, { status: 400 });
+        if (password) {
+            const passwordError = validatePassword(password);
+            if (passwordError) {
+                return NextResponse.json({ message: passwordError }, { status: 400 });
+            }
         }
 
-        // Ensure DB connection (service handles it, but robust practice)
         await connectToDatabase();
 
-        const existingUser = await getUserByEmail(email);
-        if (existingUser) {
-            return NextResponse.json(
-                { message: "User already exists" },
-                { status: 400 }
-            );
-        }
-
         // Verify OTP Hash
-        // Expected hash format: signature.expiresAt
         const [signature, expiresAt] = hash.split(".");
-
-        // Check expiration
         if (Date.now() > parseInt(expiresAt)) {
             return NextResponse.json(
                 { message: "OTP has expired" },
@@ -48,7 +52,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Verify signature
         const secret = process.env.NEXTAUTH_SECRET || "fallback_secret_key";
         const data = `${email}.${otp}.${expiresAt}`;
         const computedSignature = crypto.createHmac("sha256", secret).update(data).digest("hex");
@@ -60,21 +63,98 @@ export async function POST(req: Request) {
             );
         }
 
-        const hashedPassword = await hashPassword(password);
+        const hashedPassword = password ? await hashPassword(password) : undefined;
 
-        const newUser = await createUser({
-            name,
-            email,
-            password: hashedPassword,
-            avatar: `https://robohash.org/${email}`,
-            gender,
-        });
+        if (role === "employee") {
+            const existingUser = await User.findOne({ email });
+            if (!existingUser) {
+                return NextResponse.json(
+                    { message: "No employee account found for this email. Contact your HR." },
+                    { status: 404 }
+                );
+            }
+            if (existingUser.status === "active") {
+                return NextResponse.json(
+                    { message: "Account is already active. Please sign in." },
+                    { status: 400 }
+                );
+            }
 
-        return NextResponse.json(
-            { message: "User created successfully", user: newUser },
-            { status: 201 }
-        );
+            if (!hashedPassword) {
+                return NextResponse.json(
+                    { message: "Password is required to complete account setup." },
+                    { status: 400 }
+                );
+            }
+
+            existingUser.password = hashedPassword;
+            existingUser.status = "active";
+            if (gender) existingUser.gender = gender;
+            await existingUser.save();
+
+            return NextResponse.json(
+                { message: "Employee account activated successfully", user: existingUser },
+                { status: 200 }
+            );
+        } else {
+            // HR flow
+            const existingUser = await User.findOne({ email });
+            if (existingUser) {
+                return NextResponse.json(
+                    { message: "User already exists with this email" },
+                    { status: 400 }
+                );
+            }
+
+            if (!hashedPassword) {
+                return NextResponse.json(
+                    { message: "Password is required for registration." },
+                    { status: 400 }
+                );
+            }
+
+            if (!orgName) {
+                return NextResponse.json(
+                    { message: "Organization name is required for HR registration." },
+                    { status: 400 }
+                );
+            }
+
+            // 1. Create the user first (pending organization)
+            const newUser = new User({
+                name,
+                email,
+                password: hashedPassword,
+                role: "hr",
+                status: "active",
+                avatar: `https://robohash.org/${email}`,
+                gender: gender || "male",
+            });
+
+            await newUser.save();
+
+            // 2. Create the Organization
+            const newOrg = new Organization({
+                name: orgName,
+                logo: orgLogo || "",
+                address: orgAddress || "",
+                additionalInfo: orgAdditionalInfo || {},
+                createdBy: newUser._id,
+            });
+
+            await newOrg.save();
+
+            // 3. Link the user to the organization
+            newUser.organizationId = newOrg._id;
+            await newUser.save();
+
+            return NextResponse.json(
+                { message: "HR and Organization registered successfully", user: newUser },
+                { status: 201 }
+            );
+        }
     } catch (error: any) {
+        console.error("Signup error:", error);
         return NextResponse.json(
             { message: error.message || "Internal Server Error" },
             { status: 500 }

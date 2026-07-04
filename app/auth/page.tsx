@@ -53,7 +53,52 @@ export default function AuthPage() {
     signupEmail: "",
     signupPassword: "",
     gender: "",
+    signupEmployeeId: "",
+    role: "",
+    orgName: "",
+    orgLogo: "",
+    orgAddress: "",
   });
+
+  const [additionalFields, setAdditionalFields] = useState<{ key: string; value: string }[]>([]);
+
+  const addAdditionalField = () => {
+    setAdditionalFields([...additionalFields, { key: "", value: "" }]);
+  };
+
+  const removeAdditionalField = (index: number) => {
+    setAdditionalFields(additionalFields.filter((_, idx) => idx !== index));
+  };
+
+  const updateAdditionalField = (index: number, field: "key" | "value", value: string) => {
+    setAdditionalFields(
+      additionalFields.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileFormData = new FormData();
+    fileFormData.append("file", file);
+
+    const promise = fetch("/api/upload-image", {
+      method: "POST",
+      body: fileFormData,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to upload logo");
+      setFormData((prev) => ({ ...prev, orgLogo: data.secure_url }));
+      return data;
+    });
+
+    await toast.promise(promise, {
+      pending: "Uploading organization logo...",
+      success: "Logo uploaded successfully!",
+      error: "Failed to upload logo",
+    });
+  };
 
   const [signupStep, setSignupStep] = useState(1);
   const [otp, setOtp] = useState("");
@@ -90,6 +135,22 @@ export default function AuthPage() {
       toast.error("Password must be at most 14 characters long.");
       return false;
     }
+    if (!/[A-Z]/.test(password)) {
+      toast.error("Password must contain at least one uppercase letter.");
+      return false;
+    }
+    if (!/[a-z]/.test(password)) {
+      toast.error("Password must contain at least one lowercase letter.");
+      return false;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error("Password must contain at least one number.");
+      return false;
+    }
+    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(password)) {
+      toast.error("Password must contain at least one special character.");
+      return false;
+    }
     return true;
   };
 
@@ -102,6 +163,14 @@ export default function AuthPage() {
     } else {
       if (!formData.signupName) {
         toast.error("Name is required");
+        return;
+      }
+      if (!formData.role) {
+        toast.error("Please select a role");
+        return;
+      }
+      if (formData.role === "hr" && !formData.orgName) {
+        toast.error("Organization name is required for HR");
         return;
       }
       if (!validateEmail(formData.signupEmail)) return;
@@ -121,7 +190,11 @@ export default function AuthPage() {
           const promise = fetch("/api/auth/send-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: formData.signupEmail }),
+            body: JSON.stringify({ 
+              email: formData.signupEmail,
+              name: formData.signupName,
+              role: formData.role
+            }),
           }).then(async (res) => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Failed to send OTP");
@@ -148,6 +221,13 @@ export default function AuthPage() {
             return;
           }
 
+          const orgAdditionalInfo: Record<string, string> = {};
+          additionalFields.forEach((field) => {
+            if (field.key.trim() && field.value.trim()) {
+              orgAdditionalInfo[field.key.trim()] = field.value.trim();
+            }
+          });
+
           const promise = fetch("/api/auth/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -156,6 +236,11 @@ export default function AuthPage() {
               email: formData.signupEmail,
               password: formData.signupPassword,
               gender: formData.gender,
+              role: formData.role,
+              orgName: formData.orgName,
+              orgLogo: formData.orgLogo,
+              orgAddress: formData.orgAddress,
+              orgAdditionalInfo,
               otp,
               hash: otpHash, // Send the hash for verification
             }),
@@ -379,6 +464,105 @@ export default function AuthPage() {
                       onChange={handleInputChange}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="role"
+                      className="text-slate-900 font-medium"
+                    >
+                      Role
+                    </Label>
+                    <select
+                      id="role"
+                      className="w-full border-2 border-slate-900 focus:border-sky-900 rounded-lg bg-white h-9 px-3 outline-none font-medium transition-all text-sm appearance-none animate-none"
+                      value={formData.role}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          role: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="" disabled>
+                        Select Role
+                      </option>
+                      <option value="employee">Employee</option>
+                      <option value="hr">HR Officer</option>
+                    </select>
+                  </div>
+
+                  {formData.role === "hr" && (
+                    <div className="space-y-4 border-t-2 border-dashed border-slate-900 pt-4 mt-4 animate-none">
+                      <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Organization Details</h3>
+                      <div className="space-y-2">
+                        <Label htmlFor="orgName" className="text-slate-900 font-medium">Organization Name</Label>
+                        <Input
+                          id="orgName"
+                          placeholder="ACME Corp"
+                          className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
+                          value={formData.orgName}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="orgAddress" className="text-slate-900 font-medium">Address</Label>
+                        <Input
+                          id="orgAddress"
+                          placeholder="123 Main St, New York"
+                          className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
+                          value={formData.orgAddress}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-slate-900 font-medium">Logo</Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-900 file:text-white hover:file:bg-sky-800"
+                          onChange={handleLogoUpload}
+                        />
+                        {formData.orgLogo && (
+                          <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">✓ Logo uploaded successfully</p>
+                        )}
+                      </div>
+                      {/* Dynamic Additional Info */}
+                      <div className="space-y-2">
+                        <Label className="text-slate-900 font-medium flex justify-between items-center">
+                          <span>Additional Fields</span>
+                          <button
+                            type="button"
+                            onClick={addAdditionalField}
+                            className="text-xs text-sky-900 hover:text-sky-800 font-bold underline"
+                          >
+                            + Add Field
+                          </button>
+                        </Label>
+                        {additionalFields.map((field, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <Input
+                              placeholder="Label (e.g. Website)"
+                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs h-8"
+                              value={field.key}
+                              onChange={(e) => updateAdditionalField(idx, "key", e.target.value)}
+                            />
+                            <Input
+                              placeholder="Value (e.g. acme.com)"
+                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-xs h-8"
+                              value={field.value}
+                              onChange={(e) => updateAdditionalField(idx, "value", e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeAdditionalField(idx)}
+                              className="text-red-500 hover:text-red-700 font-bold px-2 text-xs"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label
                       htmlFor="signupEmail"

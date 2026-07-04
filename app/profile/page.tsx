@@ -21,6 +21,11 @@ import {
   VenusAndMars,
   MapPinned,
   Mail,
+  Plus,
+  Users,
+  CheckCircle,
+  Clock,
+  Building,
 } from "lucide-react";
 import CompleteProfileSheet from "@/components/CompleteProfileSheet";
 import { indianStatesAndCities } from "@/lib/states";
@@ -76,6 +81,62 @@ export default function ProfilePage() {
   }, [session]);
 
   const [userData, setUserData] = useState<any>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [newEmployeeName, setNewEmployeeName] = useState("");
+  const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
+  const [addingEmployee, setAddingEmployee] = useState(false);
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch("/api/employees");
+      if (res.ok) {
+        const data = await res.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch employees", error);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user && (session.user as any).role === "hr") {
+      fetchEmployees();
+    }
+  }, [session]);
+
+  const handleAddEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmployeeName.trim() || !newEmployeeEmail.trim()) {
+      toast.error("Please enter name and email");
+      return;
+    }
+
+    setAddingEmployee(true);
+    try {
+      const res = await fetch("/api/employees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newEmployeeName,
+          email: newEmployeeEmail,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Employee added successfully!");
+        setNewEmployeeName("");
+        setNewEmployeeEmail("");
+        fetchEmployees();
+      } else {
+        toast.error(data.message || "Failed to add employee");
+      }
+    } catch (error) {
+      toast.error("Failed to add employee");
+    } finally {
+      setAddingEmployee(false);
+    }
+  };
 
   if (status === "loading") {
     return (
@@ -421,6 +482,131 @@ export default function ProfilePage() {
                         </div>
                       </>
                     )}
+                  </div>
+                )}
+
+                {/* Organization Details */}
+                {userData?.organizationId && (
+                  <div className="w-full bg-slate-50 border-2 border-slate-900 rounded-lg p-5 mt-4 hover:bg-white transition-colors">
+                    <div className="flex items-center gap-4 border-b border-slate-900 pb-3 mb-3">
+                      {userData.organizationId.logo ? (
+                        <div className="relative h-12 w-12 overflow-hidden rounded-lg border-2 border-slate-900 shadow-sm shrink-0">
+                          <Image
+                            src={userData.organizationId.logo}
+                            alt="Org Logo"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg bg-sky-100 flex items-center justify-center border-2 border-slate-900 text-sky-900 font-bold shrink-0">
+                          <Building2 className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900">{userData.organizationId.name}</h3>
+                        <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Organization Details</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      {userData.organizationId.address && (
+                        <p className="text-slate-700 font-medium flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-slate-500" />
+                          <span>{userData.organizationId.address}</span>
+                        </p>
+                      )}
+                      {userData.organizationId.additionalInfo && Object.entries(userData.organizationId.additionalInfo).map(([k, v]: any) => (
+                        <p key={k} className="text-slate-700 font-medium flex items-center gap-2">
+                          <span className="font-bold text-slate-900 uppercase text-[10px] tracking-wider px-2 py-0.5 bg-slate-200 border border-slate-900 rounded">{k}:</span>
+                          <span>{v}</span>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Employees Management List for HR */}
+                {session.user.role === "hr" && (
+                  <div className="w-full border-t-2 border-dashed border-slate-900 pt-6 mt-6 space-y-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Add Employee Form */}
+                      <div className="flex-1 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Plus className="h-5 w-5 text-sky-900" />
+                          <h3 className="text-lg font-bold text-slate-900">Add New Employee</h3>
+                        </div>
+                        <form onSubmit={handleAddEmployee} className="space-y-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="empName" className="text-slate-900 font-semibold text-sm">Full Name</Label>
+                            <Input
+                              id="empName"
+                              placeholder="Employee Full Name"
+                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
+                              value={newEmployeeName}
+                              onChange={(e) => setNewEmployeeName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="empEmail" className="text-slate-900 font-semibold text-sm">Email Address</Label>
+                            <Input
+                              id="empEmail"
+                              type="email"
+                              placeholder="employee@example.com"
+                              className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white text-sm"
+                              value={newEmployeeEmail}
+                              onChange={(e) => setNewEmployeeEmail(e.target.value)}
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={addingEmployee}
+                            className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-semibold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all text-sm disabled:opacity-75"
+                          >
+                            {addingEmployee ? "Adding..." : "Add Employee"}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Employees List */}
+                      <div className="flex-1 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-5 w-5 text-sky-900" />
+                          <h3 className="text-lg font-bold text-slate-900">Organization Employees</h3>
+                        </div>
+                        <div className="border-2 border-slate-900 rounded-lg overflow-hidden bg-slate-50 max-h-[300px] overflow-y-auto">
+                          {employees.length === 0 ? (
+                            <div className="p-8 text-center text-slate-500 font-medium text-sm">
+                              No employees added yet.
+                            </div>
+                          ) : (
+                            <div className="divide-y-2 divide-slate-900">
+                              {employees.map((emp) => (
+                                <div key={emp._id} className="p-3 flex items-center justify-between gap-3 hover:bg-white transition-colors text-sm">
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-slate-900 truncate">{emp.name}</p>
+                                    <p className="text-xs text-slate-500 truncate">{emp.email}</p>
+                                    <p className="text-[10px] text-slate-400 font-semibold uppercase">{emp.employeeId}</p>
+                                  </div>
+                                  <div className="shrink-0 flex items-center gap-1.5">
+                                    {emp.status === "active" ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Active
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                                        <Clock className="h-3 w-3" />
+                                        Pending
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </>

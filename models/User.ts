@@ -13,7 +13,25 @@ const UserSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: [true, "Please provide a password"],
+        },
+        employeeId: {
+            type: String,
+            trim: true,
+        },
+        role: {
+            type: String,
+            enum: ["employee", "hr"],
+            default: "employee",
+            required: [true, "Please provide a role"],
+        },
+        status: {
+            type: String,
+            enum: ["pending", "active"],
+            default: "active",
+        },
+        organizationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Organization",
         },
         avatar: {
             type: String,

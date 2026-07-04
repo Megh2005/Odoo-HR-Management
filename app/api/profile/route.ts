@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
+import Organization from "@/models/Organization";
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -13,7 +14,7 @@ export async function GET() {
 
     try {
         await connectToDatabase();
-        const user = await User.findOne({ email: session.user.email }).select("-password");
+        const user = await User.findOne({ email: session.user.email }).select("-password").populate("organizationId");
 
         if (!user) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
