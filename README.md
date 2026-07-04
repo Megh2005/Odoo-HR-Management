@@ -120,4 +120,3 @@ A centralized administrative dashboard provides real-time visibility into employ
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
 
 ---
-This version reads more like documentation from enterprise projects (Microsoft, Red Hat, HashiCorp, etc.) by separating the **Business Perspective** and **Technical Perspective** into distinct sections with professional, paragraph-based explanations instead of feature-heavy lists.
