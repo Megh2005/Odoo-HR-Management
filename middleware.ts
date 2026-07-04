@@ -5,7 +5,7 @@ export default withAuth(
     function middleware(req: NextRequestWithAuth) {
         const { pathname } = req.nextUrl;
         const isAuth = !!req.nextauth.token;
-        const publicRoutes = ["/", "/contact", "/about"];
+        const publicRoutes = ["/", "/contact", "/about", "/privacy-policy"];
 
         if (publicRoutes.includes(pathname) || pathname.startsWith("/auth")) {
             return NextResponse.next();
