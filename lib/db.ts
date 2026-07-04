@@ -10,8 +10,8 @@ if (!MONGODB_URI) {
     );
 }
 
-let cachedClient: MongoClient | null = null;
-let cachedDb: Db | null = null;
+let cachedClient: MongoClient | null = (global as any).mongoClient || null;
+let cachedDb: Db | null = (global as any).mongoDb || null;
 let cachedMongoose: any = (global as any).mongoose;
 
 if (!cachedMongoose) {
@@ -41,6 +41,8 @@ export async function connectToDatabase() {
 
     cachedClient = client;
     cachedDb = db;
+    (global as any).mongoClient = client;
+    (global as any).mongoDb = db;
 
     return { client, db, mongoose: cachedMongoose.conn };
 }

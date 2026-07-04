@@ -195,10 +195,7 @@ export default function OrganizationDashboard() {
                 <span className="flex items-center justify-center md:justify-start gap-1">
                   <MapPin size={14} /> {organization.address || "No address configured"}
                 </span>
-                <span className="hidden md:inline">|</span>
-                <span className="flex items-center justify-center md:justify-start gap-1">
-                  <Users size={14} /> Workspace ID: {organization._id.toString().slice(-6).toUpperCase()}
-                </span>
+                
               </div>
             </div>
           </div>

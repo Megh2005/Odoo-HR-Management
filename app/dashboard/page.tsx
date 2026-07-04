@@ -220,7 +220,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 flex items-center gap-1.5 font-sans">
-                Welcome back, {userData.name}! <Sparkles className="h-5 w-5 text-amber-500 animate-spin-slow" />
+                Welcome back, {userData.name}!
               </h2>
               <p className="text-xs text-slate-500 font-bold capitalize">Role: {userData.role === "hr" ? "HR Officer" : "Employee Workspace"}</p>
             </div>
@@ -363,7 +363,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <CheckCircle2 size={14} className="text-slate-400 shrink-0" />
-                    <span className="font-bold text-slate-700 w-20">ID Tag</span>
+                    <span className="font-bold text-slate-700 w-20">Employee ID</span>
                     <span className="font-bold text-sky-900 bg-sky-50 border border-slate-900 px-1.5 py-0.5 rounded text-[10px]">
                       {userData.employeeId || "PENDING"}
                     </span>
@@ -482,7 +482,7 @@ export default function Dashboard() {
                     <div className="grid grid-cols-7 gap-2">
                       {/* Weekday titles */}
                       {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
-                        <div key={day} className="text-center text-[10px] font-bold text-slate-400 py-1 uppercase">{day}</div>
+                        <div key={day} className="text-center text-xs font-extrabold text-slate-500 py-1 uppercase">{day}</div>
                       ))}
 
                       {/* Map days */}
@@ -493,7 +493,7 @@ export default function Dashboard() {
                         let colorClass = "bg-slate-50 border-slate-200 text-slate-400";
                         if (record.status === "present") {
                           colorClass = record.checkOut 
-                            ? "bg-emerald-100 border-emerald-500 text-emerald-800" 
+                            ? "bg-emerald-100 border-emerald-500 text-emerald-800 animate-fade-in" 
                             : "bg-amber-100 border-amber-500 text-amber-800";
                         } else if (record.status === "leave") {
                           colorClass = "bg-sky-50 border-sky-300 text-sky-600";
@@ -502,7 +502,7 @@ export default function Dashboard() {
                         return (
                           <div 
                             key={index} 
-                            className={`flex flex-col items-center justify-center h-10 border-2 rounded-lg font-bold text-xs shadow-sm hover:scale-105 transition-all cursor-default ${colorClass}`}
+                            className={`flex flex-col items-center justify-center h-14 border-2 rounded-lg font-extrabold text-sm sm:text-base shadow-sm hover:scale-105 transition-all cursor-default ${colorClass}`}
                             title={
                               record.status === "present"
                                 ? `Check In: ${record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"}\nCheck Out: ${record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"}\nHours: ${record.workingHours}h`
@@ -511,7 +511,7 @@ export default function Dashboard() {
                           >
                             <span>{dayNum}</span>
                             {record.status === "present" && (
-                              <span className="text-[7px] font-black tracking-tighter block mt-0.5">
+                              <span className="text-[10px] font-black tracking-tight block mt-0.5 opacity-90">
                                 {record.workingHours}h
                               </span>
                             )}
@@ -521,17 +521,17 @@ export default function Dashboard() {
                     </div>
                     
                     {/* Legend keys */}
-                    <div className="flex items-center justify-center gap-4 text-[9px] font-bold text-slate-500 pt-4 mt-2 border-t">
-                      <div className="flex items-center gap-1">
-                        <span className="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-500 block shrink-0" />
+                    <div className="flex items-center justify-center gap-4 text-xs font-bold text-slate-500 pt-4 mt-2 border-t">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-500 block shrink-0" />
                         <span>Present</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-500 block shrink-0" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded bg-amber-100 border border-amber-500 block shrink-0" />
                         <span>Active Session</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="w-2.5 h-2.5 rounded bg-sky-50 border border-sky-300 block shrink-0" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded bg-sky-50 border border-sky-300 block shrink-0" />
                         <span>Weekend / Leave</span>
                       </div>
                     </div>
