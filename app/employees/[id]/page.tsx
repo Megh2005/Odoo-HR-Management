@@ -277,7 +277,7 @@ export default function EmployeeDetailPage() {
     const leaveCount = attendanceRecords.filter((r) => r.status === "leave").length;
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         {/* Month nav */}
         <div className="flex items-center justify-between">
           <button
@@ -285,11 +285,11 @@ export default function EmployeeDetailPage() {
               const d = new Date(year, month - 2, 1);
               setAttendanceMonth(getMonthKey(d));
             }}
-            className="text-xs font-bold text-slate-600 hover:text-sky-900 transition"
+            className="text-sm font-bold text-slate-600 hover:text-sky-900 transition px-3 py-1.5 rounded-lg border border-slate-300 hover:border-sky-900 hover:bg-sky-50"
           >
             ← Prev
           </button>
-          <span className="text-sm font-black text-slate-900">
+          <span className="text-base font-black text-slate-900">
             {new Date(year, month - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
           </span>
           <button
@@ -297,38 +297,38 @@ export default function EmployeeDetailPage() {
               const d = new Date(year, month, 1);
               setAttendanceMonth(getMonthKey(d));
             }}
-            className="text-xs font-bold text-slate-600 hover:text-sky-900 transition"
+            className="text-sm font-bold text-slate-600 hover:text-sky-900 transition px-3 py-1.5 rounded-lg border border-slate-300 hover:border-sky-900 hover:bg-sky-50"
           >
             Next →
           </button>
         </div>
 
         {/* Summary pills */}
-        <div className="flex gap-2 flex-wrap">
-          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+        <div className="flex gap-3 flex-wrap">
+          <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
             ✓ Present: {presentCount}
           </span>
-          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-300">
+          <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-red-100 text-red-700 border border-red-300">
             ✗ Absent: {absentCount}
           </span>
-          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+          <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
             ◌ Leave: {leaveCount}
           </span>
         </div>
 
-        {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1">
-          {DAYS_OF_WEEK.map((d) => (
-            <div key={d} className="text-center text-[9px] font-black text-slate-400 uppercase tracking-wide py-1">
-              {d}
-            </div>
-          ))}
-        </div>
+        {/* Day-by-day list */}
+        <div className="space-y-2">
+          {/* Header row */}
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 pb-1 border-b border-slate-200">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Date</span>
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400 text-center">Check In</span>
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400 text-center">Check Out</span>
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400 text-center">Duration</span>
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400 text-center">Hours</span>
+          </div>
 
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
           {cells.map((day, idx) => {
-            if (!day) return <div key={idx} />;
+            if (!day) return null;
             const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const rec = recordMap[dateStr];
             const isToday =
@@ -336,140 +336,87 @@ export default function EmployeeDetailPage() {
               today.getMonth() + 1 === month &&
               today.getDate() === day;
             const isFuture = new Date(dateStr) > today;
+            const dayName = new Date(dateStr).toLocaleDateString("en-IN", { weekday: "short" });
 
-            let bg = "bg-slate-100 text-slate-400";
-            if (rec?.status === "present") bg = "bg-emerald-100 text-emerald-800 border border-emerald-300";
-            else if (rec?.status === "absent") bg = "bg-red-100 text-red-700 border border-red-300";
-            else if (rec?.status === "leave") bg = "bg-amber-100 text-amber-800 border border-amber-300";
-            else if (isFuture) bg = "bg-slate-50 text-slate-300";
+            const checkInDate = rec?.checkIn ? new Date(rec.checkIn) : null;
+            const checkOutDate = rec?.checkOut ? new Date(rec.checkOut) : null;
+
+            const fmtTime = (d: Date) =>
+              d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+            let sessionStr = "—";
+            if (checkInDate && checkOutDate) {
+              const diffMs = checkOutDate.getTime() - checkInDate.getTime();
+              const totalMins = Math.floor(diffMs / 60000);
+              const h = Math.floor(totalMins / 60);
+              const m = totalMins % 60;
+              sessionStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+            } else if (checkInDate && !checkOutDate) {
+              const diffMs = Date.now() - checkInDate.getTime();
+              const totalMins = Math.floor(diffMs / 60000);
+              const h = Math.floor(totalMins / 60);
+              const m = totalMins % 60;
+              sessionStr = (h > 0 ? `${h}h ${m}m` : `${m}m`) + " ●";
+            }
+
+            let rowBg = isFuture ? "bg-slate-50 opacity-50" : "bg-white";
+            let statusColor = "bg-slate-100 text-slate-400";
+            if (rec?.status === "present") { rowBg = "bg-emerald-50"; statusColor = "bg-emerald-100 text-emerald-800"; }
+            else if (rec?.status === "absent") { rowBg = "bg-red-50"; statusColor = "bg-red-100 text-red-700"; }
+            else if (rec?.status === "leave") { rowBg = "bg-amber-50"; statusColor = "bg-amber-100 text-amber-700"; }
 
             return (
               <div
                 key={idx}
-                className={`rounded-md p-1.5 text-center ${bg} ${isToday ? "ring-2 ring-sky-900" : ""}`}
+                className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-4 py-3 rounded-xl border ${
+                  isToday ? "border-sky-900 ring-1 ring-sky-900" : "border-slate-200"
+                } ${rowBg}`}
               >
-                <span className="text-[10px] font-bold block">{day}</span>
-                {rec?.workingHours > 0 && (
-                  <span className="text-[8px] font-semibold block leading-none mt-0.5">
-                    {rec.workingHours.toFixed(1)}h
-                  </span>
-                )}
+                {/* Date + status */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="text-center shrink-0 w-9">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">{dayName}</span>
+                    <span className="text-lg font-black text-slate-800 leading-none">{day}</span>
+                  </div>
+                  {rec?.status && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${statusColor}`}>
+                      {rec.status}
+                    </span>
+                  )}
+                  {isToday && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-300">
+                      Today
+                    </span>
+                  )}
+                </div>
+
+                {/* Check In */}
+                <span className="text-sm font-bold text-emerald-700 text-center tabular-nums whitespace-nowrap">
+                  {checkInDate ? fmtTime(checkInDate) : <span className="text-slate-300">—</span>}
+                </span>
+
+                {/* Check Out */}
+                <span className={`text-sm font-bold text-center tabular-nums whitespace-nowrap ${checkOutDate ? "text-red-600" : checkInDate ? "text-amber-500" : "text-slate-300"}`}>
+                  {checkOutDate ? fmtTime(checkOutDate) : checkInDate ? "Active" : "—"}
+                </span>
+
+                {/* Duration */}
+                <span className="text-sm font-bold text-sky-800 text-center tabular-nums whitespace-nowrap">
+                  {rec?.checkIn ? sessionStr : <span className="text-slate-300">—</span>}
+                </span>
+
+                {/* Working hours */}
+                <span className="text-sm font-bold text-slate-700 text-center tabular-nums whitespace-nowrap">
+                  {rec?.workingHours > 0 ? `${rec.workingHours.toFixed(1)}h` : <span className="text-slate-300">—</span>}
+                </span>
               </div>
             );
           })}
         </div>
-
-        {/* ── Detailed session records list ── */}
-        {attendanceRecords.filter((r) => r.status === "present").length > 0 && (
-          <div className="mt-2 space-y-2">
-            <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Session Details
-            </h4>
-            <div className="space-y-2">
-              {attendanceRecords
-                .filter((r) => r.checkIn)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .map((rec) => {
-                  const checkInDate = rec.checkIn ? new Date(rec.checkIn) : null;
-                  const checkOutDate = rec.checkOut ? new Date(rec.checkOut) : null;
-
-                  const fmtTime = (d: Date) =>
-                    d.toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    });
-
-                  // Session duration string
-                  let sessionStr = "";
-                  if (checkInDate && checkOutDate) {
-                    const diffMs = checkOutDate.getTime() - checkInDate.getTime();
-                    const totalMins = Math.floor(diffMs / 60000);
-                    const h = Math.floor(totalMins / 60);
-                    const m = totalMins % 60;
-                    sessionStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-                  } else if (checkInDate) {
-                    // Active session — compute elapsed from now
-                    const diffMs = Date.now() - checkInDate.getTime();
-                    const totalMins = Math.floor(diffMs / 60000);
-                    const h = Math.floor(totalMins / 60);
-                    const m = totalMins % 60;
-                    sessionStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-                  }
-
-                  const dayLabel = new Date(rec.date).toLocaleDateString("en-IN", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  });
-
-                  return (
-                    <div
-                      key={rec._id}
-                      className="border border-slate-200 rounded-lg bg-slate-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-                    >
-                      {/* Date */}
-                      <div className="shrink-0">
-                        <span className="text-xs font-black text-slate-800">{dayLabel}</span>
-                        <span
-                          className={`ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            rec.status === "present"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : rec.status === "leave"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {rec.status}
-                        </span>
-                      </div>
-
-                      {/* Times */}
-                      <div className="flex flex-wrap gap-3 text-[11px] font-semibold text-slate-600">
-                        {/* Check-in */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black uppercase text-slate-400">In</span>
-                          <span className="font-bold text-emerald-700">
-                            {checkInDate ? fmtTime(checkInDate) : "—"}
-                          </span>
-                        </div>
-
-                        {/* Check-out */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black uppercase text-slate-400">Out</span>
-                          <span className={`font-bold ${checkOutDate ? "text-red-600" : "text-amber-500"}`}>
-                            {checkOutDate ? fmtTime(checkOutDate) : "Active"}
-                          </span>
-                        </div>
-
-                        {/* Session length */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black uppercase text-slate-400">Duration</span>
-                          <span className="font-bold text-sky-800">
-                            {sessionStr || "—"}
-                            {!checkOutDate && checkInDate && (
-                              <span className="ml-1 text-[8px] font-bold text-amber-500 animate-pulse">live</span>
-                            )}
-                          </span>
-                        </div>
-
-                        {/* Working hours from DB */}
-                        {rec.workingHours > 0 && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-black uppercase text-slate-400">Logged</span>
-                            <span className="font-bold text-slate-700">{rec.workingHours.toFixed(2)}h</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
       </div>
     );
   };
+
 
   // ── Loading / guard states ───────────────────────────────────────────────
   if (status === "loading" || loading) {
