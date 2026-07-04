@@ -64,9 +64,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 currentDate.setDate(currentDate.getDate() + 1);
             }
 
-            // Mark attendance for all dates
+             // Mark attendance for all dates
             for (const dateStr of datesArray) {
-                const attendanceRef = collection(db, "attendance");
+                const attendanceRef = collection(db, "attendances");
                 const q = query(
                     attendanceRef,
                     where("userId", "==", leaveData.employeeId),
@@ -77,7 +77,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 if (!querySnapshot.empty) {
                     // Update existing attendance record
                     const attendanceDoc = querySnapshot.docs[0];
-                    await updateDoc(doc(db, "attendance", attendanceDoc.id), {
+                    await updateDoc(doc(db, "attendances", attendanceDoc.id), {
                         status: "leave",
                         leaveRequestId: params.id,
                         checkIn: null,
@@ -87,7 +87,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                     });
                 } else {
                     // Create new attendance record for leave
-                    const newAttendanceRef = collection(db, "attendance");
+                    const newAttendanceRef = collection(db, "attendances");
                     await (await import("firebase/firestore")).addDoc(newAttendanceRef, {
                         userId: leaveData.employeeId,
                         employeeId: leaveData.employeeId,

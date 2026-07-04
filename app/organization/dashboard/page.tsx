@@ -17,7 +17,8 @@ import {
   Clock, 
   Building,
   UserCheck,
-  UserPlus
+  UserPlus,
+  Calendar
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -176,9 +177,20 @@ export default function OrganizationDashboard() {
       <div className="w-full max-w-4xl space-y-8">
         
         {/* Header Title */}
-        <div className="text-center md:text-left space-y-1">
-          <h1 className="text-3xl font-extrabold text-slate-900">Organization Dashboard</h1>
-          <p className="text-sm text-slate-500 font-semibold">Manage workspace directory and company records</p>
+        <div className="text-center md:text-left flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-extrabold text-slate-900">Organization Dashboard</h1>
+            <p className="text-sm text-slate-500 font-semibold">Manage workspace directory and company records</p>
+          </div>
+          {isHR && (
+            <button
+              onClick={() => router.push("/hr/leaves")}
+              className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-bold bg-sky-950 text-white hover:bg-sky-900 border-2 border-slate-900 shadow hover:shadow-md transition-all active:scale-95 text-xs self-center md:self-auto cursor-pointer"
+            >
+              <Calendar className="h-4 w-4 animate-pulse" />
+              Manage Leave Requests
+            </button>
+          )}
         </div>
 
         {/* Organization Card Details */}
