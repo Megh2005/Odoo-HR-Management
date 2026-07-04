@@ -396,13 +396,34 @@ export default function EmployeeDetailPage() {
                 </div>
 
                 {/* Check In */}
-                <span className="text-sm font-bold text-emerald-700 text-center tabular-nums whitespace-nowrap">
-                  {checkInDate ? fmtTime(checkInDate) : <span className="text-slate-300">—</span>}
+                <span className="text-sm font-bold text-emerald-700 text-center tabular-nums whitespace-nowrap flex items-center justify-center">
+                  {checkInDate ? (
+                    <span className="flex items-center gap-1.5">
+                      {fmtTime(checkInDate)}
+                      {!checkOutDate && (
+                        <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-emerald-200 text-emerald-700 border border-emerald-400 animate-pulse">
+                          ✓
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
                 </span>
 
                 {/* Check Out */}
-                <span className={`text-sm font-bold text-center tabular-nums whitespace-nowrap ${checkOutDate ? "text-red-600" : checkInDate ? "text-amber-500" : "text-slate-300"}`}>
-                  {checkOutDate ? fmtTime(checkOutDate) : checkInDate ? "Active" : "—"}
+                <span className={`text-sm font-bold text-center tabular-nums whitespace-nowrap flex items-center justify-center gap-1 ${checkOutDate ? "text-red-600" : checkInDate ? "text-amber-500" : "text-slate-300"}`}>
+                  {checkOutDate ? (
+                    fmtTime(checkOutDate)
+                  ) : checkInDate ? (
+                    <>
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300">
+                        Active
+                      </span>
+                    </>
+                  ) : (
+                    "—"
+                  )}
                 </span>
 
                 {/* Duration */}
