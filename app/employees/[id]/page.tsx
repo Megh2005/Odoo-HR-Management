@@ -262,6 +262,17 @@ export default function EmployeeDetailPage() {
     }
   };
 
+  // ── State for real-time session time updates ───────────────────────────────
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+
+  useEffect(() => {
+    // Update current time every second for real-time session calculation
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // ── Attendance calendar render ───────────────────────────────────────────
   const renderAttendanceCalendar = () => {
     const [year, month] = attendanceMonth.split("-").map(Number);
@@ -357,7 +368,8 @@ export default function EmployeeDetailPage() {
               const m = totalMins % 60;
               sessionStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
             } else if (checkInDate && !checkOutDate) {
-              const diffMs = Date.now() - checkInDate.getTime();
+              // Active session - calculate in real-time using currentTime
+              const diffMs = currentTime - checkInDate.getTime();
               const totalMins = Math.floor(diffMs / 60000);
               const h = Math.floor(totalMins / 60);
               const m = totalMins % 60;
@@ -433,7 +445,22 @@ export default function EmployeeDetailPage() {
 
                 {/* Working hours */}
                 <span className="text-sm font-bold text-slate-700 text-center tabular-nums whitespace-nowrap">
-                  {rec?.workingHours > 0 ? `${rec.workingHours.toFixed(1)}` : <span className="text-slate-300">—</span>}
+                  {rec?.checkIn ? (
+                    (() => {
+                      if (rec.checkOut) {
+                        // Completed session - use stored working hours
+                        return `${rec.workingHours?.toFixed(1) || "0"}h`;
+                      } else {
+                        // Active session - calculate in real-time
+                        const checkInDate = new Date(rec.checkIn);
+                        const diffMs = currentTime - checkInDate.getTime();
+                        const hours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
+                        return `${hours}h`;
+                      }
+                    })()
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
                 </span>
               </div>
             );

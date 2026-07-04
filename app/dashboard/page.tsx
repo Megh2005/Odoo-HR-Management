@@ -78,7 +78,7 @@ export default function Dashboard() {
             setCheckInEnd(pData.organizationId.checkInEnd || "11:00");
           }
         } else {
-          // Employee - fetch attendance logs immediately
+          // Employee - fetch attendance logs immediately to restore clock on reload
           await fetchAttendance();
           
           // Open AI Setup prompt if they do not have a Bio set up
@@ -117,7 +117,7 @@ export default function Dashboard() {
     }
   }, [status, session]);
 
-  // Poll attendance data every 10 seconds for real-time updates
+  // Poll attendance data every 30 seconds for real-time updates
   useEffect(() => {
     if (!userData || userData.role === "hr") {
       return; // Only for employees
@@ -125,19 +125,19 @@ export default function Dashboard() {
 
     const pollInterval = setInterval(() => {
       fetchAttendance();
-    }, 10000); // Poll every 10 seconds
+    }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(pollInterval);
   }, [userData]);
 
-  // Live Check-in Session Timer - Update every 1 minute and save to database
+  // Live Check-in Session Timer - Update every 1 second, calculate working hours in real-time
   useEffect(() => {
     if (!todayRecord || !todayRecord.checkIn || todayRecord.checkOut) {
       setSessionTime("");
       return;
     }
 
-    // Function to update timer and calculate working hours
+    // Function to update timer and calculate working hours from check-in time
     const updateSessionTimer = () => {
       const checkInTime = new Date(todayRecord.checkIn).getTime();
       const diffMs = Date.now() - checkInTime;
@@ -150,12 +150,13 @@ export default function Dashboard() {
       setSessionTime(formatted);
 
       // Calculate working hours in decimal format (e.g., 0.1, 1.25, 8.5)
+      // This is calculated in REAL-TIME from check-in, not waiting for DB
       const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
       
       return totalWorkingHours;
     };
 
-    // Function to save working hours to database every 30 seconds (increased frequency)
+    // Function to save working hours to database every 30 seconds
     const saveWorkingHours = async (workingHours: number) => {
       try {
         await fetch("/api/attendance/update-hours", {
@@ -175,19 +176,19 @@ export default function Dashboard() {
     // Set initial timer immediately
     const workingHours = updateSessionTimer();
 
-    // Update timer every second for display
+    // Update timer display every 1 second for real-time clock
     const timerInterval = setInterval(() => {
       updateSessionTimer();
     }, 1000);
 
-    // Save working hours to database every 30 seconds (increased from 60 seconds for more frequent updates)
+    // Save working hours to database every 30 seconds (increased frequency)
     const saveInterval = setInterval(() => {
       const checkInTime = new Date(todayRecord.checkIn).getTime();
       const diffMs = Date.now() - checkInTime;
       // Keep precision to 1 decimal place (0.1, 0.2, etc.)
       const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
       saveWorkingHours(totalWorkingHours);
-    }, 30000); // 30 seconds (increased frequency)
+    }, 30000); // 30 seconds
 
     return () => {
       clearInterval(timerInterval);
@@ -684,6 +685,15 @@ function EmployeeTabs({
   const [salary, setSalary] = useState<any>(null);
   const [loadingSalary, setLoadingSalary] = useState(false);
   const [salaryFetched, setSalaryFetched] = useState(false);
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+
+  // Update current time every second for real-time working hours calculation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── Security form state ──
   const [securityForm, setSecurityForm] = useState<SecurityForm>({
@@ -1063,20 +1073,30 @@ function EmployeeTabs({
                   } else if (record.status === "leave") {
                     colorClass = "bg-sky-50 border-sky-300 text-sky-600";
                   }
+                  
+                  // Calculate working hours - real-time for active sessions
+                  let displayHours = record.workingHours || 0;
+                  if (record.status === "present" && record.checkIn && !record.checkOut) {
+                    // Active session - calculate in real-time
+                    const checkInDate = new Date(record.checkIn);
+                    const diffMs = currentTime - checkInDate.getTime();
+                    displayHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(1));
+                  }
+                  
                   return (
                     <div
                       key={index}
                       className={`flex flex-col items-center justify-center h-14 border-2 rounded-lg font-extrabold text-sm shadow-sm hover:scale-105 transition-all cursor-default ${colorClass}`}
                       title={
                         record.status === "present"
-                          ? `In: ${record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}\nOut: ${record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}\nHours: ${record.workingHours}h`
+                          ? `In: ${record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}\nOut: ${record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}\nHours: ${displayHours}h`
                           : "Weekend / Leave"
                       }
                     >
                       <span>{dayNum}</span>
                       {record.status === "present" && (
                         <span className="text-[10px] font-black tracking-tight block mt-0.5 opacity-90">
-                          {record.workingHours}h
+                          {displayHours}h
                         </span>
                       )}
                     </div>
