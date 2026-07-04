@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
 import Organization from "@/models/Organization";
 import { validateEmail } from "@/lib/validations";
+import { sendEmployeeAdditionEmail } from "@/lib/email";
 
 export const dynamic = 'force-dynamic';
 
@@ -112,6 +113,11 @@ export async function POST(req: Request) {
         });
 
         await newEmployee.save();
+
+        // Send employee pre-registration onboarding email
+        sendEmployeeAdditionEmail(newEmployee, org, hrUser).catch(err => {
+            console.error("Failed to send employee addition email:", err);
+        });
 
         return NextResponse.json({ message: "Employee added successfully", employee: newEmployee }, { status: 201 });
     } catch (error: any) {

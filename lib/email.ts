@@ -228,3 +228,56 @@ export const sendOrganizationCreationEmail = async (org: any, hrUser: any) => {
     console.error("Error sending organization creation email:", error);
   }
 };
+
+export const sendEmployeeAdditionEmail = async (employee: any, org: any, hrUser: any) => {
+  try {
+    const signupUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth`;
+
+    const mailOptions = {
+      from: `"HR Management" <${process.env.SMTP_USER}>`,
+      to: employee.email,
+      subject: `Welcome to ${org.name} - Account Pre-Registered`,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #0f172a; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+          <div style="background-color: #0c4a6e; padding: 30px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: bold; letter-spacing: -0.5px;">Welcome to the Team!</h1>
+            <p style="margin: 10px 0 0; font-size: 15px; color: #bae6fd;">Your employee workspace account has been pre-registered.</p>
+          </div>
+          
+          <div style="padding: 30px;">
+            <p style="font-size: 16px; color: #0f172a; margin-top: 0;">Hello <strong>${employee.name}</strong>,</p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.5;">You have been added to <strong>${org.name}</strong> as an employee by your HR Officer, <strong>${hrUser.name}</strong>.</p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
+              <p style="margin: 0 0 5px; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Your Unique Employee ID</p>
+              <h2 style="margin: 0; font-size: 28px; color: #0c4a6e; font-weight: 800; letter-spacing: 1px;">${employee.employeeId}</h2>
+            </div>
+
+            <h3 style="font-size: 15px; color: #0f172a; margin-top: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">How to Activate Your Account:</h3>
+            <ol style="font-size: 14px; color: #475569; padding-left: 20px; line-height: 1.8;">
+              <li>Go to the <a href="${signupUrl}" style="color: #0c4a6e; font-weight: bold; text-decoration: underline;">Registration Portal</a>.</li>
+              <li>Select <strong>Register As: Employee</strong> from the dropdown.</li>
+              <li>Choose your organization (<strong>${org.name}</strong>) and enter your registered email: <code>${employee.email}</code>.</li>
+              <li>Verify the OTP sent to your inbox.</li>
+              <li>Set your password and gender to complete activation!</li>
+            </ol>
+
+            <div style="text-align: center; margin-top: 35px;">
+              <a href="${signupUrl}" style="background-color: #0c4a6e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; border: 2px solid #0f172a; display: inline-block;">Activate Your Account</a>
+            </div>
+          </div>
+
+          <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0 0 5px;">This email was sent from your company's HR Management system.</p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} ${org.name}. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Employee addition email sent successfully to", employee.email);
+  } catch (error) {
+    console.error("Error sending employee addition email:", error);
+  }
+};

@@ -39,7 +39,7 @@ export default function AuthPage() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
-            router.push("/profile");
+            router.push("/dashboard");
             return 0;
           }
           return prev - 1;
@@ -383,7 +383,7 @@ export default function AuthPage() {
           error: "Invalid credentials",
         });
 
-        router.push("/profile");
+        router.push("/dashboard");
       }
     } catch (error) {
       console.error(error);
@@ -437,10 +437,10 @@ export default function AuthPage() {
             </div>
 
             <button
-              onClick={() => router.push("/profile")}
+              onClick={() => router.push("/dashboard")}
               className="group w-full rounded-lg px-6 py-3 font-bold bg-sky-900 text-white hover:bg-sky-800 border border-slate-900 shadow-lg hover:shadow-md transition-all flex items-center justify-center gap-2"
             >
-              Go to Profile
+              Go to Dashboard
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </CardContent>

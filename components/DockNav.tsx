@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, User, LogIn, LogOut, Building } from "lucide-react";
+import { Home, User, LogIn, LogOut, Building, LayoutDashboard } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -26,6 +26,12 @@ export default function DockNav() {
       icon: Home,
       href: "/",
       show: true,
+    },
+    {
+      name: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/dashboard",
+      show: status === "authenticated",
     },
     {
       name: "Profile",
