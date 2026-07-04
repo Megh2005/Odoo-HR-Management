@@ -33,6 +33,7 @@ export default function OrganizationDashboard() {
   const [empSerialNumber, setEmpSerialNumber] = useState("");
   const [addingEmployee, setAddingEmployee] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
+  const [expandedEmpId, setExpandedEmpId] = useState<string | null>(null);
 
   const fetchUserData = async () => {
     try {
@@ -299,36 +300,80 @@ export default function OrganizationDashboard() {
                     </div>
                   ) : (
                     employees.map((emp) => (
-                      <div key={emp._id} className="flex items-center justify-between border-2 border-slate-900 rounded-lg p-3 bg-slate-50 hover:bg-sky-50/50 transition-colors gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative h-10 w-10 rounded-full border border-slate-900 overflow-hidden bg-slate-200 shrink-0">
-                            <Image
-                              src={emp.avatar || `https://robohash.org/${emp.email}`}
-                              alt={emp.name}
-                              fill
-                              className="object-cover"
-                            />
+                      <div 
+                        key={emp._id} 
+                        onClick={() => setExpandedEmpId(expandedEmpId === emp._id ? null : emp._id)}
+                        className="flex flex-col border-2 border-slate-900 rounded-lg p-3 bg-slate-50 hover:bg-sky-50/50 transition-all gap-1 cursor-pointer select-none"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative h-10 w-10 rounded-full border border-slate-900 overflow-hidden bg-slate-200 shrink-0">
+                              <Image
+                                src={emp.avatar || `https://robohash.org/${emp.email}`}
+                                alt={emp.name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-slate-800 truncate">{emp.name}</h4>
+                              <p className="text-[10px] text-slate-500 font-semibold truncate flex items-center gap-1">
+                                <Mail size={12} /> {emp.email}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-bold text-slate-800 truncate">{emp.name}</h4>
-                            <p className="text-[10px] text-slate-500 font-semibold truncate flex items-center gap-1">
-                              <Mail size={12} /> {emp.email}
-                            </p>
+                          <div className="text-right shrink-0">
+                            <span className="block text-[10px] font-bold text-slate-900 bg-sky-100 px-2 py-0.5 rounded border border-slate-900">
+                              {emp.employeeId}
+                            </span>
+                            <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded ${
+                              emp.status === "active" 
+                                ? "bg-emerald-100 text-emerald-800" 
+                                : "bg-amber-100 text-amber-800"
+                            }`}>
+                              {emp.status === "active" ? <UserCheck size={10} /> : <Clock size={10} />}
+                              {emp.status === "active" ? "Active" : "Pending"}
+                            </span>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className="block text-[10px] font-bold text-slate-900 bg-sky-100 px-2 py-0.5 rounded border border-slate-900">
-                            {emp.employeeId}
-                          </span>
-                          <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded ${
-                            emp.status === "active" 
-                              ? "bg-emerald-100 text-emerald-800" 
-                              : "bg-amber-100 text-amber-800"
-                          }`}>
-                            {emp.status === "active" ? <UserCheck size={10} /> : <Clock size={10} />}
-                            {emp.status === "active" ? "Active" : "Pending"}
-                          </span>
-                        </div>
+
+                        {/* Collapsible Details Drawer */}
+                        {expandedEmpId === emp._id && (
+                          <div className="mt-3 pt-3 border-t border-slate-900 text-xs text-slate-700 space-y-2.5 font-medium animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                            {emp.bio ? (
+                              <div>
+                                <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Biography Summary</span>
+                                <p className="bg-white border border-slate-200 rounded p-2 text-[11px] leading-relaxed font-sans">{emp.bio}</p>
+                              </div>
+                            ) : (
+                              <p className="italic text-slate-450 text-[11px]">No biography summary completed yet.</p>
+                            )}
+
+                            {emp.skills && emp.skills.length > 0 && (
+                              <div>
+                                <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Competencies</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {emp.skills.map((skill: string, sIdx: number) => (
+                                    <span key={sIdx} className="bg-sky-50 text-sky-850 px-2 py-0.5 rounded-full text-[9px] font-bold border border-sky-200">
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {emp.importantPoints && emp.importantPoints.length > 0 && (
+                              <div>
+                                <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Career Highlights</span>
+                                <ul className="list-disc pl-4 space-y-0.5 text-[11px] leading-normal font-sans">
+                                  {emp.importantPoints.map((point: string, pIdx: number) => (
+                                    <li key={pIdx}>{point}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

@@ -54,6 +54,18 @@ const UserSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        bio: {
+            type: String,
+            default: "",
+        },
+        skills: {
+            type: [String],
+            default: [],
+        },
+        importantPoints: {
+            type: [String],
+            default: [],
+        },
     },
     {
         timestamps: true,

@@ -19,7 +19,8 @@ import {
   Square,
   Sparkles,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Upload
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,19 @@ export default function Dashboard() {
   const [todayRecord, setTodayRecord] = useState<any>(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
+
+  // Resume Setup and Parsing States
+  const [showResumeSetup, setShowResumeSetup] = useState(false);
+  const [resumeText, setResumeText] = useState("");
+  const [parsingResume, setParsingResume] = useState(false);
+  const [parsedResumeData, setParsedResumeData] = useState<{
+    bio: string;
+    skills: string[];
+    importantPoints: string[];
+  } | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [attachedFileData, setAttachedFileData] = useState("");
+  const [attachedFileMime, setAttachedFileMime] = useState("");
 
   // Check-In window states for HR settings
   const [checkInStart, setCheckInStart] = useState("09:00");
@@ -64,6 +78,11 @@ export default function Dashboard() {
         } else {
           // Employee - fetch attendance logs
           fetchAttendance();
+          
+          // Open AI Setup prompt if they do not have a Bio set up
+          if (!pData.bio) {
+            setShowResumeSetup(true);
+          }
         }
       }
     } catch (error) {
@@ -163,6 +182,77 @@ export default function Dashboard() {
     }
   };
 
+  const handleAnalyzeResume = async (textToParse: string) => {
+    if (!textToParse.trim() && !attachedFileData) {
+      toast.error("Please paste your resume text or upload a file first");
+      return;
+    }
+    setParsingResume(true);
+    setParsedResumeData(null);
+    try {
+      const payload: any = {};
+      if (attachedFileData && attachedFileMime) {
+        payload.fileData = attachedFileData;
+        payload.mimeType = attachedFileMime;
+      } else {
+        payload.text = textToParse;
+      }
+
+      const res = await fetch("/api/profile/parse-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setParsedResumeData({
+          bio: data.bio || "",
+          skills: data.skills || [],
+          importantPoints: data.importantPoints || []
+        });
+        toast.success("Resume parsed successfully!");
+      } else {
+        toast.error(data.message || "Failed to parse resume");
+      }
+    } catch (error) {
+      toast.error("Failed to analyze resume");
+    } finally {
+      setParsingResume(false);
+    }
+  };
+
+  const handleAddToProfile = async () => {
+    if (!parsedResumeData) return;
+    setSavingProfile(true);
+    try {
+      const res = await fetch("/api/profile/update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bio: parsedResumeData.bio,
+          skills: parsedResumeData.skills,
+          importantPoints: parsedResumeData.importantPoints
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Profile highlights added successfully!");
+        setShowResumeSetup(false);
+        setParsedResumeData(null);
+        setResumeText("");
+        setAttachedFileData("");
+        setAttachedFileMime("");
+        fetchData(); // Reload profile details
+      } else {
+        toast.error(data.message || "Failed to update profile");
+      }
+    } catch (error) {
+      toast.error("Failed to save changes");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   if (status === "loading" || fetchingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -201,6 +291,139 @@ export default function Dashboard() {
   };
 
   const isPortalOpen = getPortalStatus();
+
+  // Render Resume Analyzer Portal Overlay
+  if (showResumeSetup && !isHR) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center p-4 py-12">
+        <BackgroundPattern />
+        <Card className="w-full max-w-2xl border-2 border-slate-900 shadow-2xl rounded-xl bg-white/95 backdrop-blur-sm overflow-hidden">
+          <CardHeader className="bg-sky-900 border-b-2 border-slate-900 text-white p-6">
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <span>AI Resume Setup Portal</span>
+            </CardTitle>
+            <p className="text-xs text-sky-100 font-medium mt-1 leading-relaxed">
+              Upload your resume in PDF format to automatically extract your bio, core competencies, and career achievements.
+            </p>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-slate-950">Upload Resume File (PDF only)</Label>
+                <div className="border-2 border-dashed border-slate-900 rounded-lg p-4 bg-slate-50 hover:bg-slate-100 transition-all text-center">
+                  <label htmlFor="resumeFileUploader" className="cursor-pointer space-y-1.5 block">
+                    <div className="h-8 w-8 rounded-full bg-sky-100 border border-slate-900 text-sky-900 flex items-center justify-center mx-auto">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-800 block">Choose resume PDF...</span>
+                  </label>
+                  <input
+                    id="resumeFileUploader"
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
+                        toast.error("Please upload a PDF file only");
+                        return;
+                      }
+
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setAttachedFileData(event.target?.result as string || "");
+                        setAttachedFileMime("application/pdf");
+                        setResumeText(`[Attached File: ${file.name}]`);
+                        toast.success("PDF resume attached successfully!");
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </div>
+              </div>
+
+              {resumeText && (
+                <div className="bg-sky-50 border-2 border-sky-300 rounded-lg p-3 text-xs text-sky-900 font-bold flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-sky-900 shrink-0" />
+                  <span className="truncate">Selected file: {resumeText.replace("[Attached File: ", "").replace("]", "")}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleAnalyzeResume(resumeText)}
+                  disabled={parsingResume || !attachedFileData}
+                  className="w-full rounded-lg px-4 py-2.5 font-bold bg-sky-900 text-white hover:bg-sky-850 border-2 border-slate-900 hover:shadow transition-all text-xs disabled:opacity-75 disabled:cursor-not-allowed active:scale-95"
+                >
+                  {parsingResume ? "Analyzing Resume..." : "Extract Profile Info with Gemini AI"}
+                </button>
+              </div>
+            </div>
+
+            {/* Parsing Result Display */}
+            {parsedResumeData && (
+              <div className="border-t-2 border-slate-900 pt-6 space-y-4">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  <span>AI Extracted Profile Preview</span>
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="extractedBio" className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Extracted Bio</Label>
+                    <textarea
+                      id="extractedBio"
+                      rows={3}
+                      className="w-full border-2 border-slate-900 rounded-lg bg-white p-2 text-xs font-semibold text-slate-900 focus:border-sky-900 leading-relaxed"
+                      value={parsedResumeData.bio}
+                      onChange={(e) => setParsedResumeData(prev => prev ? ({ ...prev, bio: e.target.value }) : null)}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="extractedSkills" className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Extracted Skills (Comma Separated)</Label>
+                    <input
+                      id="extractedSkills"
+                      type="text"
+                      className="w-full border-2 border-slate-900 rounded-lg bg-white p-2 text-xs font-semibold text-slate-900 focus:border-sky-900"
+                      value={parsedResumeData.skills.join(", ")}
+                      onChange={(e) => {
+                        const skillsArr = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                        setParsedResumeData(prev => prev ? ({ ...prev, skills: skillsArr }) : null);
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="extractedPoints" className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Extracted Highlights (One Per Line)</Label>
+                    <textarea
+                      id="extractedPoints"
+                      rows={4}
+                      className="w-full border-2 border-slate-900 rounded-lg bg-white p-2 text-xs font-semibold text-slate-900 focus:border-sky-900 leading-relaxed"
+                      value={parsedResumeData.importantPoints.join("\n")}
+                      onChange={(e) => {
+                        const pointsArr = e.target.value.split("\n").map(p => p.trim()).filter(Boolean);
+                        setParsedResumeData(prev => prev ? ({ ...prev, importantPoints: pointsArr }) : null);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleAddToProfile}
+                  disabled={savingProfile}
+                  className="w-full rounded-lg px-4 py-3 font-bold bg-emerald-600 text-white hover:bg-emerald-700 border-2 border-slate-900 hover:shadow transition-all text-xs active:scale-95"
+                >
+                  {savingProfile ? "Saving changes..." : "Add to Profile & Save to Database"}
+                </button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-start py-12 px-4 md:px-8 pb-32">
@@ -369,6 +592,14 @@ export default function Dashboard() {
                     </span>
                   </div>
                 </div>
+
+                {/* AI setup trigger button */}
+                <button
+                  onClick={() => setShowResumeSetup(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2 font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border-2 border-slate-900 transition-all text-xs"
+                >
+                  Update AI Profile
+                </button>
               </Card>
 
               {/* Attendance controller Widget */}
@@ -467,6 +698,47 @@ export default function Dashboard() {
                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Avg Daily Hours</p>
                 </div>
               </div>
+
+              {/* Employee Biography & AI Skills Summary */}
+              {(userData.bio || (userData.skills && userData.skills.length > 0) || (userData.importantPoints && userData.importantPoints.length > 0)) && (
+                <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4">
+                  <h3 className="text-base font-bold text-slate-900 border-b pb-2 flex items-center gap-2">
+                    <span>AI Professional Biography</span>
+                  </h3>
+                  <div className="space-y-4">
+                    {userData.bio && (
+                      <div className="space-y-1">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Professional Bio</h4>
+                        <p className="text-xs font-semibold text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3">
+                          {userData.bio}
+                        </p>
+                      </div>
+                    )}
+                    {userData.skills && userData.skills.length > 0 && (
+                      <div className="space-y-1.5">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Core Competencies</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {userData.skills.map((skill: string, sIdx: number) => (
+                            <span key={sIdx} className="bg-sky-50 border border-sky-300 text-sky-850 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {userData.importantPoints && userData.importantPoints.length > 0 && (
+                      <div className="space-y-1.5">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Achievements & Milestones</h4>
+                        <ul className="list-disc pl-5 text-xs text-slate-700 font-semibold space-y-1 leading-relaxed">
+                          {userData.importantPoints.map((point: string, pIdx: number) => (
+                            <li key={pIdx}>{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
 
               {/* Attendance Monthly Calendar Log */}
               <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4">

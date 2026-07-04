@@ -44,10 +44,13 @@ export async function PATCH(req: NextRequest) {
             updateData.avatar = avatar;
         }
 
-        const { state, city, pincode } = body;
+        const { state, city, pincode, bio, skills, importantPoints } = body;
         if (state !== undefined) updateData.state = state;
         if (city !== undefined) updateData.city = city;
         if (pincode !== undefined) updateData.pincode = pincode;
+        if (bio !== undefined) updateData.bio = bio;
+        if (skills !== undefined) updateData.skills = skills;
+        if (importantPoints !== undefined) updateData.importantPoints = importantPoints;
 
         // If address fields are updated, set isAddressUpdated to true
         if (state || city || pincode) {
