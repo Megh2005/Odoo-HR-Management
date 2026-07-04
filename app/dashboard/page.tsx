@@ -558,265 +558,373 @@ export default function Dashboard() {
 
         {/* Employee Dashboard Panel */}
         {!isHR && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            
-            {/* Left section: Information & Today's Attendance clock */}
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Profile card */}
-              <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider pb-1 border-b">Member Profile</h3>
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2 text-xs">
-                    <User size={14} className="text-slate-400 shrink-0" />
-                    <span className="font-bold text-slate-700 w-20">Full Name</span>
-                    <span className="font-bold text-slate-900 truncate flex-1">{userData.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <Mail size={14} className="text-slate-400 shrink-0" />
-                    <span className="font-bold text-slate-700 w-20">Email</span>
-                    <span className="font-bold text-slate-900 truncate flex-1">{userData.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <Building2 size={14} className="text-slate-400 shrink-0" />
-                    <span className="font-bold text-slate-700 w-20">Company</span>
-                    <span className="font-bold text-slate-900 truncate flex-1">
-                      {organization ? organization.name : "No organization linked"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <CheckCircle2 size={14} className="text-slate-400 shrink-0" />
-                    <span className="font-bold text-slate-700 w-20">Employee ID</span>
-                    <span className="font-bold text-sky-900 bg-sky-50 border border-slate-900 px-1.5 py-0.5 rounded text-[10px]">
-                      {userData.employeeId || "PENDING"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* AI setup trigger button */}
-                <button
-                  onClick={() => setShowResumeSetup(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2 font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border-2 border-slate-900 transition-all text-xs"
-                >
-                  Update AI Profile
-                </button>
-              </Card>
-
-              {/* Attendance controller Widget */}
-              <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4 text-center">
-                <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider pb-1 border-b">Shift Tracker</h3>
-                
-                {/* Active checkin session timer */}
-                {sessionTime && (
-                  <div className="space-y-1 py-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">Session Time</span>
-                    <h2 className="text-3xl font-black text-emerald-600 font-mono tracking-wider">{sessionTime}</h2>
-                  </div>
-                )}
-
-                {/* Status message */}
-                <div className="text-xs font-bold text-slate-700 space-y-3">
-                  {!todayRecord ? (
-                    <>
-                      <p className="text-slate-500">You are not checked in for today.</p>
-                      {!isPortalOpen && (
-                        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-3 text-left text-amber-800 text-xs font-semibold flex items-start gap-2">
-                          <ShieldAlert className="h-4.5 w-4.5 text-amber-600 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-bold">Check-In Window Closed</p>
-                            <p className="text-[10px] text-amber-700 mt-0.5 leading-relaxed font-sans">
-                              The check-in portal is only open between <span className="underline font-bold">{orgStart}</span> and <span className="underline font-bold">{orgEnd}</span>.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : todayRecord.checkOut ? (
-                    <p className="text-slate-800">
-                      Shift completed today! (Logged hours: <span className="text-sky-900">{todayRecord.workingHours}h</span>)
-                    </p>
-                  ) : (
-                    <p className="text-emerald-600 flex items-center justify-center gap-1 font-sans">
-                      ● Currently Checked In (Shift in progress)
-                    </p>
-                  )}
-                </div>
-
-                {/* Control Action Button */}
-                <div className="pt-2">
-                  {!todayRecord ? (
-                    isPortalOpen ? (
-                      <button
-                        onClick={() => handleAttendanceAction("checkin")}
-                        disabled={loadingAction}
-                        className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-slate-900 shadow hover:shadow-md transition-all active:scale-95 text-xs disabled:opacity-50"
-                      >
-                        <Play className="h-4 w-4 fill-white" /> Check In Today
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-slate-100 text-slate-400 border-2 border-slate-300 transition-all text-xs cursor-not-allowed"
-                      >
-                        Check-In Closed
-                      </button>
-                    )
-                  ) : todayRecord.checkOut ? (
-                    <button
-                      disabled
-                      className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-slate-100 text-slate-400 border-2 border-slate-300 transition-all text-xs cursor-not-allowed"
-                    >
-                      Shift Completed
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleAttendanceAction("checkout")}
-                      disabled={loadingAction}
-                      className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-red-500 hover:bg-red-600 text-white border-2 border-slate-900 shadow hover:shadow-md transition-all active:scale-95 text-xs disabled:opacity-50"
-                    >
-                      <Square className="h-4 w-4 fill-white" /> Check Out Shift
-                    </button>
-                  )}
-                </div>
-              </Card>
-
-            </div>
-
-            {/* Right section: Calendar & Stats Summary */}
-            <div className="lg:col-span-3 space-y-6">
-              
-              {/* Stats overview card */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/95 border-2 border-slate-900 p-4 rounded-xl text-center shadow">
-                  <Calendar className="h-6 w-6 text-sky-900 mx-auto mb-1.5" />
-                  <h4 className="text-xl font-black text-slate-900">{totalPresentDays}</h4>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Days Logged (This Month)</p>
-                </div>
-                <div className="bg-white/95 border-2 border-slate-900 p-4 rounded-xl text-center shadow">
-                  <Clock className="h-6 w-6 text-sky-900 mx-auto mb-1.5" />
-                  <h4 className="text-xl font-black text-slate-900">{avgHours}h</h4>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Avg Daily Hours</p>
-                </div>
-              </div>
-
-              {/* Employee Biography & AI Skills Summary */}
-              {(userData.bio || (userData.skills && userData.skills.length > 0) || (userData.importantPoints && userData.importantPoints.length > 0)) && (
-                <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4">
-                  <h3 className="text-base font-bold text-slate-900 border-b pb-2 flex items-center gap-2">
-                    <span>AI Professional Biography</span>
-                  </h3>
-                  <div className="space-y-4">
-                    {userData.bio && (
-                      <div className="space-y-1">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Professional Bio</h4>
-                        <p className="text-xs font-semibold text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3">
-                          {userData.bio}
-                        </p>
-                      </div>
-                    )}
-                    {userData.skills && userData.skills.length > 0 && (
-                      <div className="space-y-1.5">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Core Competencies</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {userData.skills.map((skill: string, sIdx: number) => (
-                            <span key={sIdx} className="bg-sky-50 border border-sky-300 text-sky-850 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {userData.importantPoints && userData.importantPoints.length > 0 && (
-                      <div className="space-y-1.5">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Achievements & Milestones</h4>
-                        <ul className="list-disc pl-5 text-xs text-slate-700 font-semibold space-y-1 leading-relaxed">
-                          {userData.importantPoints.map((point: string, pIdx: number) => (
-                            <li key={pIdx}>{point}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              )}
-
-              {/* Attendance Monthly Calendar Log */}
-              <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4">
-                <h3 className="text-base font-bold text-slate-900 border-b pb-2">Monthly Attendance Calendar</h3>
-                
-                {/* 30-Day Grid Layout */}
-                {attendanceRecords.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 font-medium text-xs">
-                    No logs recorded for this month yet. Use the timer widget to check in!
-                  </div>
-                ) : (
-                  <div>
-                    <div className="grid grid-cols-7 gap-2">
-                      {/* Weekday titles */}
-                      {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
-                        <div key={day} className="text-center text-xs font-extrabold text-slate-500 py-1 uppercase">{day}</div>
-                      ))}
-
-                      {/* Map days */}
-                      {attendanceRecords.map((record, index) => {
-                        const dateObj = new Date(record.date);
-                        const dayNum = dateObj.getDate();
-
-                        let colorClass = "bg-slate-50 border-slate-200 text-slate-400";
-                        if (record.status === "present") {
-                          colorClass = record.checkOut 
-                            ? "bg-emerald-100 border-emerald-500 text-emerald-800 animate-fade-in" 
-                            : "bg-amber-100 border-amber-500 text-amber-800";
-                        } else if (record.status === "leave") {
-                          colorClass = "bg-sky-50 border-sky-300 text-sky-600";
-                        }
-
-                        return (
-                          <div 
-                            key={index} 
-                            className={`flex flex-col items-center justify-center h-14 border-2 rounded-lg font-extrabold text-sm sm:text-base shadow-sm hover:scale-105 transition-all cursor-default ${colorClass}`}
-                            title={
-                              record.status === "present"
-                                ? `Check In: ${record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"}\nCheck Out: ${record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"}\nHours: ${record.workingHours}h`
-                                : "Holiday/Weekend Off"
-                            }
-                          >
-                            <span>{dayNum}</span>
-                            {record.status === "present" && (
-                              <span className="text-[10px] font-black tracking-tight block mt-0.5 opacity-90">
-                                {record.workingHours}h
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* Legend keys */}
-                    <div className="flex items-center justify-center gap-4 text-xs font-bold text-slate-500 pt-4 mt-2 border-t">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-500 block shrink-0" />
-                        <span>Present</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-amber-100 border border-amber-500 block shrink-0" />
-                        <span>Active Session</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-sky-50 border border-sky-300 block shrink-0" />
-                        <span>Weekend / Leave</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-            </div>
-
-          </div>
+          <EmployeeTabs
+            userData={userData}
+            organization={organization}
+            todayRecord={todayRecord}
+            sessionTime={sessionTime}
+            isPortalOpen={isPortalOpen}
+            orgStart={orgStart}
+            orgEnd={orgEnd}
+            loadingAction={loadingAction}
+            handleAttendanceAction={handleAttendanceAction}
+            attendanceRecords={attendanceRecords}
+            totalPresentDays={totalPresentDays}
+            avgHours={avgHours}
+            setShowResumeSetup={setShowResumeSetup}
+          />
         )}
 
       </div>
     </div>
   );
 }
+
+// ─── Employee Tabs Component ──────────────────────────────────────────────────
+type EmpTab = "overview" | "salary" | "attendance";
+
+function EmployeeTabs({
+  userData,
+  organization,
+  todayRecord,
+  sessionTime,
+  isPortalOpen,
+  orgStart,
+  orgEnd,
+  loadingAction,
+  handleAttendanceAction,
+  attendanceRecords,
+  totalPresentDays,
+  avgHours,
+  setShowResumeSetup,
+}: any) {
+  const [activeTab, setActiveTab] = useState<EmpTab>("overview");
+  const [salary, setSalary] = useState<any>(null);
+  const [loadingSalary, setLoadingSalary] = useState(false);
+  const [salaryFetched, setSalaryFetched] = useState(false);
+
+  // Fetch salary lazily when tab opens
+  useEffect(() => {
+    if (activeTab === "salary" && !salaryFetched) {
+      setLoadingSalary(true);
+      fetch("/api/salary/me")
+        .then((r) => r.json())
+        .then((data) => { setSalary(data); setSalaryFetched(true); })
+        .catch(() => {})
+        .finally(() => setLoadingSalary(false));
+    }
+  }, [activeTab, salaryFetched]);
+
+  // ── Salary calculation helpers ──
+  const computeGross = (s: any): number => {
+    if (!s) return 0;
+    const b = Number(s.basic) || 0;
+    const credits = (Number(s.hra) + Number(s.da) + Number(s.bonus) + Number(s.otherAllowances)) || 0;
+    const debits = (Number(s.pf) + Number(s.tax) + Number(s.otherDeductions)) || 0;
+    return b + (b * credits) / 100 - (b * debits) / 100;
+  };
+
+  const tabDefs: { id: EmpTab; label: string }[] = [
+    { id: "overview", label: "Overview" },
+    { id: "salary", label: "Salary" },
+    { id: "attendance", label: "Attendance" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Tab bar */}
+      <div className="flex border-2 border-slate-900 rounded-xl overflow-hidden bg-white/95 shadow">
+        {tabDefs.map((tab, i) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 py-3 text-sm font-bold border-r-2 last:border-r-0 border-slate-900 transition-all ${
+              activeTab === tab.id
+                ? "bg-sky-900 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── OVERVIEW TAB ── */}
+      {activeTab === "overview" && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Left: Profile + Shift Tracker */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Profile card */}
+            <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-4 space-y-3">
+              <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider pb-1 border-b">Member Profile</h3>
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <User size={14} className="text-slate-400 shrink-0" />
+                  <span className="font-bold text-slate-700 w-20">Full Name</span>
+                  <span className="font-bold text-slate-900 truncate flex-1">{userData.name}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <Mail size={14} className="text-slate-400 shrink-0" />
+                  <span className="font-bold text-slate-700 w-20">Email</span>
+                  <span className="font-bold text-slate-900 truncate flex-1">{userData.email}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <Building2 size={14} className="text-slate-400 shrink-0" />
+                  <span className="font-bold text-slate-700 w-20">Company</span>
+                  <span className="font-bold text-slate-900 truncate flex-1">
+                    {organization ? organization.name : "No organization linked"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle2 size={14} className="text-slate-400 shrink-0" />
+                  <span className="font-bold text-slate-700 w-20">Employee ID</span>
+                  <span className="font-bold text-sky-900 bg-sky-50 border border-slate-900 px-1.5 py-0.5 rounded text-[10px]">
+                    {userData.employeeId || "PENDING"}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowResumeSetup(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-lg py-2 font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border-2 border-slate-900 transition-all text-xs"
+              >
+                Update AI Profile
+              </button>
+            </Card>
+
+            {/* Shift Tracker */}
+            <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4 text-center">
+              <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider pb-1 border-b">Shift Tracker</h3>
+              {sessionTime && (
+                <div className="space-y-1 py-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">Session Time</span>
+                  <h2 className="text-3xl font-black text-emerald-600 font-mono tracking-wider">{sessionTime}</h2>
+                </div>
+              )}
+              <div className="text-xs font-bold text-slate-700 space-y-3">
+                {!todayRecord ? (
+                  <>
+                    <p className="text-slate-500">You are not checked in for today.</p>
+                    {!isPortalOpen && (
+                      <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-3 text-left text-amber-800 text-xs font-semibold flex items-start gap-2">
+                        <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">Check-In Window Closed</p>
+                          <p className="text-[10px] text-amber-700 mt-0.5 leading-relaxed font-sans">
+                            Open between <span className="underline font-bold">{orgStart}</span> and <span className="underline font-bold">{orgEnd}</span>.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : todayRecord.checkOut ? (
+                  <p className="text-slate-800">
+                    Shift completed! Logged: <span className="text-sky-900">{todayRecord.workingHours}h</span>
+                  </p>
+                ) : (
+                  <p className="text-emerald-600 flex items-center justify-center gap-1 font-sans">● Currently Checked In</p>
+                )}
+              </div>
+              <div className="pt-2">
+                {!todayRecord ? (
+                  isPortalOpen ? (
+                    <button
+                      onClick={() => handleAttendanceAction("checkin")}
+                      disabled={loadingAction}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-slate-900 shadow transition-all active:scale-95 text-xs disabled:opacity-50"
+                    >
+                      <Play className="h-4 w-4 fill-white" /> Check In Today
+                    </button>
+                  ) : (
+                    <button disabled className="w-full rounded-lg px-4 py-3 font-extrabold bg-slate-100 text-slate-400 border-2 border-slate-300 text-xs cursor-not-allowed">
+                      Check-In Closed
+                    </button>
+                  )
+                ) : todayRecord.checkOut ? (
+                  <button disabled className="w-full rounded-lg px-4 py-3 font-extrabold bg-slate-100 text-slate-400 border-2 border-slate-300 text-xs cursor-not-allowed">
+                    Shift Completed
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleAttendanceAction("checkout")}
+                    disabled={loadingAction}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-red-500 hover:bg-red-600 text-white border-2 border-slate-900 shadow transition-all active:scale-95 text-xs disabled:opacity-50"
+                  >
+                    <Square className="h-4 w-4 fill-white" /> Check Out Shift
+                  </button>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Right: Stats + Bio */}
+          <div className="lg:col-span-3 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/95 border-2 border-slate-900 p-4 rounded-xl text-center shadow">
+                <Calendar className="h-6 w-6 text-sky-900 mx-auto mb-1.5" />
+                <h4 className="text-xl font-black text-slate-900">{totalPresentDays}</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Days Logged (This Month)</p>
+              </div>
+              <div className="bg-white/95 border-2 border-slate-900 p-4 rounded-xl text-center shadow">
+                <Clock className="h-6 w-6 text-sky-900 mx-auto mb-1.5" />
+                <h4 className="text-xl font-black text-slate-900">{avgHours}h</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Avg Daily Hours</p>
+              </div>
+            </div>
+
+            {(userData.bio || (userData.skills && userData.skills.length > 0) || (userData.importantPoints && userData.importantPoints.length > 0)) && (
+              <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4">
+                <h3 className="text-base font-bold text-slate-900 border-b pb-2">AI Professional Biography</h3>
+                <div className="space-y-4">
+                  {userData.bio && (
+                    <div className="space-y-1">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Professional Bio</h4>
+                      <p className="text-xs font-semibold text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3">{userData.bio}</p>
+                    </div>
+                  )}
+                  {userData.skills && userData.skills.length > 0 && (
+                    <div className="space-y-1.5">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Core Competencies</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {userData.skills.map((skill: string, sIdx: number) => (
+                          <span key={sIdx} className="bg-sky-50 border border-sky-300 text-sky-900 px-2.5 py-0.5 rounded-full text-[10px] font-bold">{skill}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {userData.importantPoints && userData.importantPoints.length > 0 && (
+                    <div className="space-y-1.5">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Achievements & Milestones</h4>
+                      <ul className="list-disc pl-5 text-xs text-slate-700 font-semibold space-y-1 leading-relaxed">
+                        {userData.importantPoints.map((point: string, pIdx: number) => (
+                          <li key={pIdx}>{point}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── SALARY TAB (read-only) ── */}
+      {activeTab === "salary" && (
+        <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5">
+          <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-5">Your Salary Structure</h3>
+          {loadingSalary ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="h-8 w-8 border-4 border-sky-900 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !salary ? (
+            <div className="text-center py-12 text-slate-400 font-semibold text-sm">
+              Your salary structure has not been configured by HR yet.
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Gross banner */}
+              <div className="bg-linear-to-r from-sky-900 to-slate-800 rounded-xl p-5 text-white text-center">
+                <p className="text-xs font-bold uppercase tracking-widest opacity-70 mb-1">Gross Salary</p>
+                <p className="text-4xl font-black">
+                  ₹{(computeGross(salary)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <p className="text-[10px] opacity-60 mt-1">Based on your current pay structure</p>
+              </div>
+
+              {/* Breakdown table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  <span>Component</span>
+                  <span>Amount</span>
+                </div>
+                {[
+                  { label: "Basic Salary", value: salary.basic, type: "base" },
+                  ...(salary.hra > 0 ? [{ label: `HRA (${salary.hra}%)`, value: (salary.hra / 100) * salary.basic, type: "credit" }] : []),
+                  ...(salary.da > 0 ? [{ label: `DA (${salary.da}%)`, value: (salary.da / 100) * salary.basic, type: "credit" }] : []),
+                  ...(salary.bonus > 0 ? [{ label: `Bonus (${salary.bonus}%)`, value: (salary.bonus / 100) * salary.basic, type: "credit" }] : []),
+                  ...(salary.otherAllowances > 0 ? [{ label: `Other Allowances (${salary.otherAllowances}%)`, value: (salary.otherAllowances / 100) * salary.basic, type: "credit" }] : []),
+                  ...(salary.pf > 0 ? [{ label: `PF Deduction (${salary.pf}%)`, value: (salary.pf / 100) * salary.basic, type: "debit" }] : []),
+                  ...(salary.tax > 0 ? [{ label: `Income Tax (${salary.tax}%)`, value: (salary.tax / 100) * salary.basic, type: "debit" }] : []),
+                  ...(salary.otherDeductions > 0 ? [{ label: `Other Deductions (${salary.otherDeductions}%)`, value: (salary.otherDeductions / 100) * salary.basic, type: "debit" }] : []),
+                ].map((row, i) => (
+                  <div key={i} className="flex justify-between items-center px-4 py-3 border-b border-slate-100 last:border-0">
+                    <div className="flex items-center gap-2">
+                      {row.type === "credit" && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">+</span>}
+                      {row.type === "debit" && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">−</span>}
+                      {row.type === "base" && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">₹</span>}
+                      <span className="text-sm font-semibold text-slate-700">{row.label}</span>
+                    </div>
+                    <span className={`text-sm font-bold tabular-nums ${row.type === "credit" ? "text-emerald-700" : row.type === "debit" ? "text-red-600" : "text-slate-900"}`}>
+                      {row.type === "debit" ? "−" : "+"}₹{row.value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-t-2 border-slate-900">
+                  <span className="text-sm font-black text-slate-900">Gross Total</span>
+                  <span className="text-base font-black text-sky-900">₹{(computeGross(salary)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold text-center">This information is set by your HR. Contact HR for any changes.</p>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── ATTENDANCE TAB (read-only) ── */}
+      {activeTab === "attendance" && (
+        <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 space-y-4">
+          <h3 className="text-base font-bold text-slate-900 border-b pb-2">Monthly Attendance Calendar</h3>
+          {attendanceRecords.length === 0 ? (
+            <div className="text-center py-10 text-slate-400 font-medium text-xs">
+              No logs recorded for this month yet.
+            </div>
+          ) : (
+            <div>
+              <div className="grid grid-cols-7 gap-2">
+                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
+                  <div key={day} className="text-center text-xs font-extrabold text-slate-500 py-1 uppercase">{day}</div>
+                ))}
+                {attendanceRecords.map((record: any, index: number) => {
+                  const dateObj = new Date(record.date);
+                  const dayNum = dateObj.getDate();
+                  let colorClass = "bg-slate-50 border-slate-200 text-slate-400";
+                  if (record.status === "present") {
+                    colorClass = record.checkOut
+                      ? "bg-emerald-100 border-emerald-500 text-emerald-800"
+                      : "bg-amber-100 border-amber-500 text-amber-800";
+                  } else if (record.status === "leave") {
+                    colorClass = "bg-sky-50 border-sky-300 text-sky-600";
+                  }
+                  return (
+                    <div
+                      key={index}
+                      className={`flex flex-col items-center justify-center h-14 border-2 rounded-lg font-extrabold text-sm shadow-sm hover:scale-105 transition-all cursor-default ${colorClass}`}
+                      title={
+                        record.status === "present"
+                          ? `In: ${record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}\nOut: ${record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "N/A"}\nHours: ${record.workingHours}h`
+                          : "Weekend / Leave"
+                      }
+                    >
+                      <span>{dayNum}</span>
+                      {record.status === "present" && (
+                        <span className="text-[10px] font-black tracking-tight block mt-0.5 opacity-90">
+                          {record.workingHours}h
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-center gap-4 text-xs font-bold text-slate-500 pt-4 mt-2 border-t">
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-500 block shrink-0" /><span>Present</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 border border-amber-500 block shrink-0" /><span>Active Session</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-50 border border-sky-300 block shrink-0" /><span>Weekend / Leave</span></div>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
