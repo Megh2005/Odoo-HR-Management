@@ -1,0 +1,151 @@
+# ============================================================================
+# Docker Build Context Ignore File
+# Odoo HR Management Application
+# ============================================================================
+
+# ─────────────────────────────────────────────────────────────────────────
+# Build & Version Control
+# ─────────────────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+.github
+.gitlab-ci.yml
+.gitlab
+
+# ─────────────────────────────────────────────────────────────────────────
+# Node & Package Management
+# ─────────────────────────────────────────────────────────────────────────
+node_modules
+npm-debug.log
+npm-error.log
+yarn-error.log
+pnpm-debug.log
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+
+# ─────────────────────────────────────────────────────────────────────────
+# Build Output & Cache
+# ─────────────────────────────────────────────────────────────────────────
+.next
+.turbo
+out
+dist
+build
+.cache
+
+# ─────────────────────────────────────────────────────────────────────────
+# Development & IDE
+# ─────────────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode-settings.json
+.prettierrc
+.eslintrc.json
+.babelrc
+
+# ─────────────────────────────────────────────────────────────────────────
+# Testing & Coverage
+# ─────────────────────────────────────────────────────────────────────────
+coverage
+test-results
+.nyc_output
+*.lcov
+__tests__
+jest.config.js
+vitest.config.ts
+
+# ─────────────────────────────────────────────────────────────────────────
+# Documentation & Config Files
+# ─────────────────────────────────────────────────────────────────────────
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+docs
+.docusaurus
+docusaurus.config.js
+
+# ─────────────────────────────────────────────────────────────────────────
+# Docker Files (prevent recursion)
+# ─────────────────────────────────────────────────────────────────────────
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+docker-entrypoint.sh
+
+# ─────────────────────────────────────────────────────────────────────────
+# Logs & Temporary Files
+# ─────────────────────────────────────────────────────────────────────────
+*.log
+logs
+*.pid
+*.pid.lock
+tmp
+temp
+
+# ─────────────────────────────────────────────────────────────────────────
+# OS & System Files
+# ─────────────────────────────────────────────────────────────────────────
+Thumbs.db
+.AppleDouble
+.LSOverride
+.TemporaryItems
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini
+
+# ─────────────────────────────────────────────────────────────────────────
+# CI/CD & Deployment
+# ─────────────────────────────────────────────────────────────────────────
+.circleci
+.travis.yml
+.codecov.yml
+Jenkinsfile
+.drone.yml
+.github/workflows
+
+# ─────────────────────────────────────────────────────────────────────────
+# Project Specific
+# ─────────────────────────────────────────────────────────────────────────
+.next/cache
+.next/static
+.turbo
+out
+public/sw.js
+public/workbox-*.js
+public/workbox-*.map
+
+# ─────────────────────────────────────────────────────────────────────────
+# Development Tools
+# ─────────────────────────────────────────────────────────────────────────
+.editorconfig
+.prettierignore
+.eslintignore
+tsconfig.json
+next.config.js
+postcss.config.js
+tailwind.config.js
+
+# ─────────────────────────────────────────────────────────────────────────
+# Misc
+# ─────────────────────────────────────────────────────────────────────────
+*.tgz
+*.zip
+*.rar
+NOTES.md
+TODO.md
+.tool-versions

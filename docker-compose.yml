@@ -1,0 +1,122 @@
+version: '3.9'
+
+# ============================================================================
+# Odoo HR Management - Docker Compose Configuration
+# Service:
+#   - odoo-hr-app: Next.js frontend application
+# ============================================================================
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Odoo HR Management Application Container
+  # ─────────────────────────────────────────────────────────────────────────
+  odoo-hr-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: odoo-hr-runtime
+    container_name: odoo-hr-app-container
+    hostname: odoo-hr-app
+    image: odoo-hr-management:latest
+    
+    # Port mapping: HOST:CONTAINER
+    ports:
+      - "3000:3000"
+    
+    # Environment variables
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://localhost:3000
+    
+    # Volume mounts
+    volumes:
+      # Mount public directory for static assets
+      - ./public:/app/public:ro
+      # Shared logs volume
+      - odoo-hr-logs:/app/logs
+      # Shared cache volume
+      - odoo-hr-cache:/app/.next/cache
+    
+    # Resource limits
+    resources:
+      limits:
+        cpus: '1.5'
+        memory: 1024M
+      reservations:
+        cpus: '1'
+        memory: 512M
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=odoo-hr-app"
+    
+    # Labels for container identification
+    labels:
+      application: "Odoo HR Management"
+      environment: "production"
+      version: "1.0.0"
+      maintainer: "HR Management Team"
+    
+    # Networks
+    networks:
+      - odoo-hr-network
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+# ─────────────────────────────────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────────────────────────────────
+networks:
+  odoo-hr-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+# ─────────────────────────────────────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────────────────────────────────────
+volumes:
+  # Application logs
+  odoo-hr-logs:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=100m,uid=1001
+    labels:
+      application: "Odoo HR Management"
+      component: "logs"
+
+  # Next.js build cache
+  odoo-hr-cache:
+    driver: local
+    labels:
+      application: "Odoo HR Management"
+      component: "cache"
