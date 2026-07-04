@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import BackgroundPattern from "@/components/BackgroundPattern";
 import Image from "next/image";
-import { Plus, Trash2, Upload, ArrowLeft } from "lucide-react";
+import { Upload, ArrowLeft, Search, MapPin, Building2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { Country, State, City } from "country-state-city";
 
 export default function CreateOrganization() {
   const { data: session, status, update } = useSession();
@@ -17,10 +18,22 @@ export default function CreateOrganization() {
 
   const [orgName, setOrgName] = useState("");
   const [orgAddress, setOrgAddress] = useState("");
-  const [orgFields, setOrgFields] = useState<{ key: string; value: string }[]>([]);
   const [orgLogoPreview, setOrgLogoPreview] = useState("");
   const [orgLogoFile, setOrgLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Country State City selection states
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [selectedCountryCode, setSelectedCountryCode] = useState("");
+  const [selectedStateCode, setSelectedStateCode] = useState("");
+  const [selectedCityName, setSelectedCityName] = useState("");
+
+  // Google Places Autocomplete states
+  const [addressInput, setAddressInput] = useState("");
+  const [predictions, setPredictions] = useState<any[]>([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -31,6 +44,66 @@ export default function CreateOrganization() {
       router.push("/organization/dashboard");
     }
   }, [status, session, router]);
+
+  useEffect(() => {
+    // Populate all countries on mount
+    setCountries(Country.getAllCountries());
+  }, []);
+
+  const handleCountryChange = (countryCode: string) => {
+    setSelectedCountryCode(countryCode);
+    setSelectedStateCode("");
+    setSelectedCityName("");
+    setStates(State.getStatesOfCountry(countryCode));
+    setCities([]);
+  };
+
+  const handleStateChange = (stateCode: string) => {
+    setSelectedStateCode(stateCode);
+    setSelectedCityName("");
+    setCities(City.getCitiesOfState(selectedCountryCode, stateCode));
+  };
+
+  const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    setAddressInput(input);
+
+    if (!input.trim()) {
+      setPredictions([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(input)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPredictions(data.predictions || []);
+        setShowAutocomplete(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch address suggestions", error);
+    }
+  };
+
+  const handlePredictionSelect = async (p: any) => {
+    setAddressInput(p.description);
+    setOrgAddress(p.description);
+    setPredictions([]);
+    setShowAutocomplete(false);
+
+    try {
+      const res = await fetch(`/api/maps/details?placeId=${p.place_id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.result?.formatted_address) {
+          setOrgAddress(data.result.formatted_address);
+          setAddressInput(data.result.formatted_address);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch place details", error);
+    }
+  };
 
   const handleOrgLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -45,22 +118,27 @@ export default function CreateOrganization() {
     setOrgLogoPreview(URL.createObjectURL(file));
   };
 
-  const addOrgField = () => {
-    setOrgFields([...orgFields, { key: "", value: "" }]);
-  };
-
-  const removeOrgField = (index: number) => {
-    setOrgFields(orgFields.filter((_, idx) => idx !== index));
-  };
-
-  const updateOrgField = (index: number, field: "key" | "value", value: string) => {
-    setOrgFields(orgFields.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orgName.trim()) {
       toast.error("Organization Name is required");
+      return;
+    }
+
+    const countryObj = countries.find(c => c.isoCode === selectedCountryCode);
+    const stateObj = states.find(s => s.isoCode === selectedStateCode);
+
+    const countryName = countryObj ? countryObj.name : "";
+    const stateName = stateObj ? stateObj.name : "";
+    const cityName = selectedCityName;
+
+    if (!countryName || !stateName || !cityName) {
+      toast.error("Please specify office Country, State, and City location details");
+      return;
+    }
+
+    if (!orgAddress.trim()) {
+      toast.error("Please pick a valid Google Maps address suggestion");
       return;
     }
 
@@ -85,14 +163,6 @@ export default function CreateOrganization() {
         uploadedLogoUrl = uploadData.secure_url;
       }
 
-      // Convert additional custom fields key-value array to Map object
-      const additionalInfo: Record<string, string> = {};
-      for (const field of orgFields) {
-        if (field.key.trim() && field.value.trim()) {
-          additionalInfo[field.key.trim()] = field.value.trim();
-        }
-      }
-
       const res = await fetch("/api/organization/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -100,14 +170,17 @@ export default function CreateOrganization() {
           name: orgName.trim(),
           logo: uploadedLogoUrl,
           address: orgAddress.trim(),
-          additionalInfo,
+          additionalInfo: {
+            "Country": countryName,
+            "State": stateName,
+            "City": cityName
+          },
         }),
       });
 
       const data = await res.json();
       if (res.ok) {
         toast.success("Organization created successfully!");
-        // Refresh next-auth session with updated organizationId
         await update();
         router.push("/organization/dashboard");
       } else {
@@ -147,115 +220,168 @@ export default function CreateOrganization() {
             <CardTitle className="text-2xl font-bold text-slate-900">
               Create Your Organization
             </CardTitle>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Set up your workspace and establish identity details</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1 font-sans">Set up your workspace and identity details</p>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {orgLogoPreview && (
-                <div className="flex justify-center mb-4">
-                  <div className="relative h-28 w-28 rounded-full border-4 border-slate-900 overflow-hidden shadow-lg bg-slate-100">
+              
+              {/* Header profile uploader panel */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-slate-50 border-2 border-slate-900 rounded-lg">
+                <div className="relative h-24 w-24 rounded-xl border-2 border-slate-900 overflow-hidden bg-white shrink-0 flex items-center justify-center shadow">
+                  {orgLogoPreview ? (
                     <Image
                       src={orgLogoPreview}
                       alt="Logo Preview"
                       fill
                       className="object-cover"
                     />
-                  </div>
+                  ) : (
+                    <Building2 className="h-10 w-10 text-slate-300" />
+                  )}
                 </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="orgName" className="text-slate-900 font-semibold text-sm">
-                    Organization Name
-                  </Label>
-                  <Input
-                    id="orgName"
-                    placeholder="e.g. Acme Corp"
-                    className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
+                <div className="space-y-2 text-center sm:text-left flex-1">
+                  <Label className="text-slate-900 font-bold text-sm">Company Logo</Label>
+                  <p className="text-[11px] text-slate-500 font-medium mb-1">Upload your official brand logo (under 1MB)</p>
+                  <label
+                    htmlFor="orgLogoFileUploader"
+                    className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md cursor-pointer transition-all active:scale-95"
+                  >
+                    <Upload size={14} />
+                    {orgLogoFile ? "Change Logo" : "Choose Logo Image"}
+                  </label>
+                  <input
+                    id="orgLogoFileUploader"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleOrgLogoChange}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="orgAddress" className="text-slate-900 font-semibold text-sm">
-                    Address
-                  </Label>
-                  <Input
-                    id="orgAddress"
-                    placeholder="e.g. 123 Main St, New York"
-                    className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
-                    value={orgAddress}
-                    onChange={(e) => setOrgAddress(e.target.value)}
-                  />
+                  {orgLogoFile && (
+                    <span className="block text-[11px] text-emerald-600 font-bold mt-1">✓ Selected: {orgLogoFile.name}</span>
+                  )}
                 </div>
               </div>
 
+              {/* Organization name field */}
               <div className="space-y-2">
-                <Label className="text-slate-900 font-semibold text-sm">Company Logo</Label>
-                <label
-                  htmlFor="orgLogoFileUploader"
-                  className="flex flex-col items-center justify-center border-2 border-dashed border-slate-900 rounded-lg p-5 bg-slate-50 hover:bg-slate-100 hover:shadow-sm cursor-pointer transition-all gap-1.5"
-                >
-                  <div className="h-8 w-8 rounded-full bg-sky-100 flex items-center justify-center border border-slate-900 text-sky-900 shrink-0">
-                    <Upload className="h-4 w-4" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-800 truncate max-w-xs">
-                    {orgLogoFile ? orgLogoFile.name : "Choose company logo..."}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    PNG, JPG up to 1MB
-                  </span>
-                </label>
-                <input
-                  id="orgLogoFileUploader"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleOrgLogoChange}
+                <Label htmlFor="orgName" className="text-slate-900 font-bold text-sm">
+                  Organization Name
+                </Label>
+                <Input
+                  id="orgName"
+                  placeholder="e.g. Acme Corp"
+                  className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white h-11"
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
                 />
               </div>
 
-              {/* Custom Attributes Fields Section */}
-              <div className="space-y-3 pt-4 border-t-2 border-dashed border-slate-200">
-                <div className="flex items-center justify-between">
-                  <Label className="text-slate-900 font-bold text-sm">Custom Attributes / Specifications</Label>
-                  <button
-                    type="button"
-                    onClick={addOrgField}
-                    className="flex items-center gap-1 text-xs font-bold bg-sky-100 hover:bg-sky-200 text-sky-900 border border-slate-900 px-2 py-1 rounded-md transition-all active:scale-95"
-                  >
-                    <Plus size={14} /> Add Attribute
-                  </button>
+              {/* Country State City selection fields */}
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Office Location Specifications</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="countrySelect" className="text-slate-900 font-bold text-xs">Country</Label>
+                    <select
+                      id="countrySelect"
+                      className="w-full border-2 border-slate-900 focus:border-sky-900 rounded-lg bg-white h-11 px-3 outline-none font-bold text-xs appearance-none"
+                      value={selectedCountryCode}
+                      onChange={(e) => handleCountryChange(e.target.value)}
+                    >
+                      <option value="">Choose Country</option>
+                      {countries.map((c) => (
+                        <option key={c.isoCode} value={c.isoCode}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stateSelect" className="text-slate-900 font-bold text-xs">State</Label>
+                    <select
+                      id="stateSelect"
+                      className="w-full border-2 border-slate-900 focus:border-sky-900 rounded-lg bg-white h-11 px-3 outline-none font-bold text-xs appearance-none disabled:bg-slate-100 disabled:text-slate-400"
+                      value={selectedStateCode}
+                      onChange={(e) => handleStateChange(e.target.value)}
+                      disabled={!selectedCountryCode}
+                    >
+                      <option value="">Choose State</option>
+                      {states.map((s) => (
+                        <option key={s.isoCode} value={s.isoCode}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="citySelect" className="text-slate-900 font-bold text-xs">City</Label>
+                    <select
+                      id="citySelect"
+                      className="w-full border-2 border-slate-900 focus:border-sky-900 rounded-lg bg-white h-11 px-3 outline-none font-bold text-xs appearance-none disabled:bg-slate-100 disabled:text-slate-400"
+                      value={selectedCityName}
+                      onChange={(e) => setSelectedCityName(e.target.value)}
+                      disabled={!selectedStateCode}
+                    >
+                      <option value="">Choose City</option>
+                      {cities.map((city) => (
+                        <option key={city.name} value={city.name}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Office Address Auto-complete and Map Preview */}
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <div className="space-y-2 relative">
+                  <Label htmlFor="addressAutocomplete" className="text-slate-900 font-bold text-sm">
+                    Office Address (Google Places Auto-complete)
+                  </Label>
+                  <div className="relative flex items-center">
+                    <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+                    <Input
+                      id="addressAutocomplete"
+                      placeholder="Start typing your office address..."
+                      className="border-2 border-slate-900 bg-white pl-9 h-11"
+                      value={addressInput}
+                      onChange={handleAddressInputChange}
+                      onFocus={() => setShowAutocomplete(true)}
+                    />
+                  </div>
+
+                  {showAutocomplete && predictions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border-2 border-slate-900 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100">
+                      {predictions.map((p) => (
+                        <button
+                          key={p.place_id}
+                          type="button"
+                          className="w-full text-left p-3 hover:bg-sky-50 transition-colors text-xs font-semibold text-slate-800 flex items-start gap-2"
+                          onClick={() => handlePredictionSelect(p)}
+                        >
+                          <MapPin className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
+                          <span>{p.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {orgFields.length === 0 ? (
-                  <p className="text-xs font-medium text-slate-400 italic text-center py-2">No custom attributes added yet. Add items like GSTIN, Industry type, etc.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {orgFields.map((field, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <Input
-                          placeholder="Attribute Label (e.g. GSTIN)"
-                          className="flex-1 border-2 border-slate-900 bg-white"
-                          value={field.key}
-                          onChange={(e) => updateOrgField(index, "key", e.target.value)}
-                        />
-                        <Input
-                          placeholder="Value (e.g. 29AAAAA1111A1Z1)"
-                          className="flex-1 border-2 border-slate-900 bg-white"
-                          value={field.value}
-                          onChange={(e) => updateOrgField(index, "value", e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeOrgField(index)}
-                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg border border-slate-900 transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
+                {orgAddress && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs font-bold text-slate-500">Google Maps Preview</Label>
+                    <div className="border-2 border-slate-900 rounded-lg overflow-hidden h-[250px] w-full shadow bg-slate-100">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_MAPS_API_KEY}&q=${encodeURIComponent(orgAddress)}`}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -263,7 +389,7 @@ export default function CreateOrganization() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-bold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-bold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow-md active:shadow-sm transition-all h-12 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? "Creating Organization..." : "Create Organization"}
               </button>

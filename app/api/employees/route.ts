@@ -6,6 +6,8 @@ import User from "@/models/User";
 import Organization from "@/models/Organization";
 import { validateEmail } from "@/lib/validations";
 
+export const dynamic = 'force-dynamic';
+
 // GET: List all employees in the HR's organization
 export async function GET() {
     try {

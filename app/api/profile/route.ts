@@ -5,6 +5,8 @@ import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
 import Organization from "@/models/Organization";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     const session = await getServerSession(authOptions);
 
