@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MdHome, MdDashboard, MdPerson, MdBusiness, MdGroup, MdLogin, MdLogout, MdInfo } from "react-icons/md";
+import { MdHome, MdDashboard, MdPerson, MdBusiness, MdGroup, MdLogin, MdLogout, MdInfo, MdLock } from "react-icons/md";
 
 export default function DockNav() {
   const { data: session, status } = useSession();
@@ -37,6 +37,12 @@ export default function DockNav() {
       name: "About",
       icon: MdInfo,
       href: "/about",
+      show: true,
+    },
+    {
+      name: "Privacy",
+      icon: MdLock,
+      href: "/privacy-policy",
       show: true,
     },
     {
