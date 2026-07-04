@@ -108,10 +108,7 @@ export default function AuthPage() {
   };
 
   const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    if (value && value.includes("@") && !value.endsWith("@gmail.com")) {
-      toast.error("Please enter a valid Gmail address");
-    }
+    // Email validation is handled by the main validation function
   };
 
   const validateEmail = (email: string) => {
@@ -119,11 +116,11 @@ export default function AuthPage() {
       toast.error("Email or Employee ID is required");
       return false;
     }
-    if (email.includes("@")) {
-      if (!email.endsWith("@gmail.com")) {
-        toast.error("Please enter a valid Gmail address");
-        return false;
-      }
+    // Accept any email domain - no domain restriction
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email.includes("@") && !emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return false;
     }
     return true;
   };
