@@ -1,6 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { getUserByEmailOrEmployeeId, verifyPassword } from "@/lib/services";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth as firebaseAuth } from "@/lib/firebase";
+import { getUserByEmail, getUserById, createUser } from "@/lib/services";
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -15,31 +17,87 @@ export const authOptions: NextAuthOptions = {
                     throw new Error("Invalid credentials");
                 }
 
-                const user = await getUserByEmailOrEmployeeId(credentials.email);
+                try {
+                    // Firebase Auth supports sign in via email and password
+                    // If credentials.email is an employeeId, we resolve it to email first
+                    let email = credentials.email.trim();
+                    if (!email.includes("@")) {
+                        // Resolve employeeId to email
+                        const usersRef = await import("@/lib/services");
+                        const resolvedUser = await usersRef.getUserByEmailOrEmployeeId(email);
+                        if (resolvedUser && resolvedUser.email) {
+                            email = resolvedUser.email;
+                        } else {
+                            throw new Error("Invalid credentials");
+                        }
+                    }
 
-                if (!user) {
+                    // Authenticate with Firebase Auth directly
+                    const userCredential = await signInWithEmailAndPassword(
+                        firebaseAuth,
+                        email,
+                        credentials.password
+                    );
+
+                    const firebaseUser = userCredential.user;
+
+                    // Fetch complete user document details from Firestore
+                    // Try by Firebase Auth UID first
+                    let user = await getUserById(firebaseUser.uid);
+
+                    if (!user) {
+                        // If not found by UID, check by email
+                        const userByEmail = await getUserByEmail(email);
+                        if (userByEmail) {
+                            // Copy the old document to the new UID document ID and delete the old one
+                            user = await createUser({
+                                id: firebaseUser.uid,
+                                name: userByEmail.name,
+                                email: userByEmail.email,
+                                role: userByEmail.role || "employee",
+                                status: "active",
+                                organizationId: userByEmail.organizationId || null,
+                                employeeId: userByEmail.employeeId || null,
+                                avatar: userByEmail.avatar || firebaseUser.photoURL || `https://robohash.org/${email}`,
+                                gender: userByEmail.gender || "male",
+                                state: userByEmail.state || null,
+                                city: userByEmail.city || null,
+                                pincode: userByEmail.pincode || null,
+                                isAddressUpdated: userByEmail.isAddressUpdated || false,
+                            });
+                            
+                            // Delete old document
+                            const { doc, deleteDoc } = await import("firebase/firestore");
+                            const { db } = await import("@/lib/firebase");
+                            await deleteDoc(doc(db, "users", userByEmail.id));
+                        } else {
+                            // Create a completely new user document
+                            user = await createUser({
+                                id: firebaseUser.uid,
+                                name: firebaseUser.displayName || email.split("@")[0],
+                                email: email,
+                                role: "employee",
+                                status: "active",
+                                avatar: firebaseUser.photoURL || `https://robohash.org/${email}`,
+                                gender: "male",
+                            });
+                        }
+                    }
+
+                    return {
+                        id: user.id, // Use Firestore document ID as the NextAuth session ID
+                        name: user.name,
+                        email: user.email,
+                        avatar: user.avatar,
+                        gender: user.gender,
+                        employeeId: user.employeeId,
+                        role: user.role,
+                        organizationId: user.organizationId ? user.organizationId.toString() : undefined,
+                    };
+                } catch (error: any) {
+                    console.error("Firebase Auth error:", error.code || error.message);
                     throw new Error("Invalid credentials");
                 }
-
-                const isCorrectPassword = await verifyPassword(
-                    credentials.password,
-                    user.password
-                );
-
-                if (!isCorrectPassword) {
-                    throw new Error("Invalid credentials");
-                }
-
-                return {
-                    id: user._id.toString(),
-                    name: user.name,
-                    email: user.email,
-                    avatar: user.avatar,
-                    gender: user.gender,
-                    employeeId: user.employeeId,
-                    role: user.role,
-                    organizationId: user.organizationId ? user.organizationId.toString() : undefined,
-                };
             },
         }),
     ],

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { validateEmail, validatePassword } from "@/lib/validations";
-import { getUserByEmail, createUser, updateUser, hashPassword } from "@/lib/services";
+import { getUserByEmail, createUser, updateUser } from "@/lib/services";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth as firebaseAuth } from "@/lib/firebase";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
@@ -62,8 +64,6 @@ export async function POST(req: Request) {
             );
         }
 
-        const hashedPassword = password ? await hashPassword(password) : undefined;
-
         if (role === "employee") {
             const existingUser = await getUserByEmail(email);
             if (!existingUser) {
@@ -79,19 +79,38 @@ export async function POST(req: Request) {
                 );
             }
 
-            if (!hashedPassword) {
+            if (!password) {
                 return NextResponse.json(
                     { message: "Password is required to complete account setup." },
                     { status: 400 }
                 );
             }
 
-            const updatedUser = await updateUser(existingUser.id, {
-                password: hashedPassword,
+            // Create Firebase Auth user
+            const userCredential = await createUserWithEmailAndPassword(
+                firebaseAuth,
+                email,
+                password
+            );
+            const firebaseUser = userCredential.user;
+
+            // Copy pre-created employee document in Firestore with document ID set to firebaseUser.uid
+            const updatedUser = await createUser({
+                id: firebaseUser.uid,
+                name: existingUser.name,
+                email: existingUser.email,
+                employeeId: existingUser.employeeId,
+                role: "employee",
                 status: "active",
-                ...(gender && { gender }),
-                ...(avatar && { avatar }),
+                organizationId: existingUser.organizationId,
+                avatar: avatar || existingUser.avatar || `https://robohash.org/${email}`,
+                gender: gender || existingUser.gender || "male",
             });
+
+            // Delete the old pre-created document with auto-generated ID
+            const { doc, deleteDoc } = await import("firebase/firestore");
+            const { db } = await import("@/lib/firebase");
+            await deleteDoc(doc(db, "users", existingUser.id));
 
             return NextResponse.json(
                 { message: "Employee account activated successfully", user: updatedUser },
@@ -107,18 +126,26 @@ export async function POST(req: Request) {
                 );
             }
 
-            if (!hashedPassword) {
+            if (!password) {
                 return NextResponse.json(
                     { message: "Password is required for registration." },
                     { status: 400 }
                 );
             }
 
-            // Create HR User
+            // Create user in Firebase Auth
+            const userCredential = await createUserWithEmailAndPassword(
+                firebaseAuth,
+                email,
+                password
+            );
+            const firebaseUser = userCredential.user;
+
+            // Create HR User document in Firestore using firebaseUser.uid as ID
             const newUser = await createUser({
+                id: firebaseUser.uid,
                 name,
                 email,
-                password: hashedPassword,
                 role: "hr",
                 status: "active",
                 avatar: avatar || `https://robohash.org/${email}`,

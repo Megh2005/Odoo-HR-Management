@@ -12,7 +12,6 @@ import {
     orderBy 
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import bcrypt from "bcryptjs";
 
 // Helper to convert Firestore doc to standard object containing both id and _id
 function docToObj(docSnap: any) {
@@ -61,7 +60,6 @@ export async function getUserById(id: string) {
 }
 
 export async function createUser(data: any) {
-    const usersRef = collection(db, "users");
     const defaultData = {
         role: "employee",
         status: "active",
@@ -74,9 +72,17 @@ export async function createUser(data: any) {
         updatedAt: new Date().toISOString(),
     };
     
-    // If specific ID is not provided, Firestore auto-generates one.
-    const finalData = { ...defaultData, ...data };
-    const docRef = await addDoc(usersRef, finalData);
+    const { id, ...rest } = data;
+    const finalData = { ...defaultData, ...rest };
+    
+    let docRef;
+    if (id) {
+        docRef = doc(db, "users", id);
+        await setDoc(docRef, finalData);
+    } else {
+        const usersRef = collection(db, "users");
+        docRef = await addDoc(usersRef, finalData);
+    }
     const docSnap = await getDoc(docRef);
     return docToObj(docSnap);
 }
@@ -90,17 +96,6 @@ export async function updateUser(id: string, data: any) {
     });
     const docSnap = await getDoc(docRef);
     return docToObj(docSnap);
-}
-
-// ── PASSWORD SERVICES ────────────────────────────────────────────────────────
-
-export async function hashPassword(password: string) {
-    const salt = await bcrypt.genSalt(7);
-    return await bcrypt.hash(password, salt);
-}
-
-export async function verifyPassword(password: string, hash: string) {
-    return await bcrypt.compare(password, hash);
 }
 
 // ── ORGANIZATION SERVICES ───────────────────────────────────────────────────
