@@ -31,6 +31,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(20);
+  const [activeTab, setActiveTab] = useState("signin");
   const router = useRouter();
 
   useEffect(() => {
@@ -108,15 +109,21 @@ export default function AuthPage() {
 
   const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    if (value && !value.endsWith("@gmail.com")) {
+    if (value && value.includes("@") && !value.endsWith("@gmail.com")) {
       toast.error("Please enter a valid Gmail address");
     }
   };
 
   const validateEmail = (email: string) => {
-    if (!email || !email.endsWith("@gmail.com")) {
-      toast.error("Please enter a valid Gmail address");
+    if (!email) {
+      toast.error("Email or Employee ID is required");
       return false;
+    }
+    if (email.includes("@")) {
+      if (!email.endsWith("@gmail.com")) {
+        toast.error("Please enter a valid Gmail address");
+        return false;
+      }
     }
     return true;
   };
@@ -174,17 +181,22 @@ export default function AuthPage() {
       } else {
         // Employee
         if (signupStep === 1) {
+          if (!formData.signupName) {
+            toast.error("Full Name is required");
+            return;
+          }
           if (!selectedOrgId) {
             toast.error("Please select your organization");
             return;
           }
           if (!validateEmail(formData.signupEmail)) return;
         } else if (signupStep === 3) {
+          if (!validatePassword(formData.signupPassword)) return;
+        } else if (signupStep === 4) {
           if (!formData.gender) {
             toast.error("Please select your gender");
             return;
           }
-          if (!validatePassword(formData.signupPassword)) return;
         }
       }
     }
@@ -247,7 +259,7 @@ export default function AuthPage() {
 
             await toast.promise(promise, {
               pending: "Verifying code...",
-              success: "Code verified! Please set your password and gender.",
+              success: "Code verified! Please set up your password.",
               error: {
                 render({ data }: any) {
                   return data?.message || "Invalid OTP code";
@@ -302,7 +314,7 @@ export default function AuthPage() {
 
             await toast.promise(promise, {
               pending: "Creating account...",
-              success: "Account created successfully!",
+              success: "HR Account created successfully! Please sign in.",
               error: {
                 render({ data }: any) {
                   return data?.message || "Something went wrong";
@@ -310,10 +322,31 @@ export default function AuthPage() {
               },
             });
 
-            window.location.reload();
+            // Reset and go to sign in
+            setFormData({
+              signinEmail: "",
+              signinPassword: "",
+              signupName: "",
+              signupEmail: "",
+              signupPassword: "",
+              gender: "",
+              signupEmployeeId: "",
+              role: "",
+              signupAvatar: "",
+            });
+            setAvatarPreview("");
+            setAvatarFile(null);
+            setSignupStep(1);
+            setIsOtpVerified(false);
+            setOtp("");
+            setOtpHash("");
+            setActiveTab("signin");
           }
         } else if (signupStep === 3 && formData.role === "employee") {
-          // Step 3: Employee finalize setup (Gender, Password, Avatar)
+          // Step 3: Employee set password only. Save it and go to step 4
+          setSignupStep(4);
+        } else if (signupStep === 4 && formData.role === "employee") {
+          // Step 4: Employee set gender and avatar and complete registration
           const promise = (async () => {
             let uploadedAvatarUrl = formData.signupAvatar;
 
@@ -356,7 +389,7 @@ export default function AuthPage() {
 
           await toast.promise(promise, {
             pending: "Activating account...",
-            success: "Account activated successfully!",
+            success: "Account activated successfully! Please sign in.",
             error: {
               render({ data }: any) {
                 return data?.message || "Something went wrong";
@@ -364,7 +397,25 @@ export default function AuthPage() {
             },
           });
 
-          window.location.reload();
+          // Reset and go to sign in
+          setFormData({
+            signinEmail: "",
+            signinPassword: "",
+            signupName: "",
+            signupEmail: "",
+            signupPassword: "",
+            gender: "",
+            signupEmployeeId: "",
+            role: "",
+            signupAvatar: "",
+          });
+          setAvatarPreview("");
+          setAvatarFile(null);
+          setSignupStep(1);
+          setIsOtpVerified(false);
+          setOtp("");
+          setOtpHash("");
+          setActiveTab("signin");
         }
       } else {
         // Sign In
@@ -452,7 +503,7 @@ export default function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <BackgroundPattern />
-      <Tabs defaultValue="signin" className="w-full max-w-2xl">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-2xl">
         <TabsList className="grid w-full grid-cols-2 mb-4 bg-transparent gap-4">
           <TabsTrigger
             value="signin"
@@ -484,16 +535,15 @@ export default function AuthPage() {
                   htmlFor="signinEmail"
                   className="text-slate-900 font-medium"
                 >
-                  Email
+                  Email or Employee ID
                 </Label>
                 <Input
                   id="signinEmail"
-                  type="email"
-                  placeholder="name@example.com"
+                  type="text"
+                  placeholder="e.g. name@example.com or AC-JODO-2026-01"
                   className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
                   value={formData.signinEmail}
                   onChange={handleInputChange}
-                  onBlur={handleEmailBlur}
                 />
               </div>
               <div className="space-y-2">
@@ -715,49 +765,65 @@ export default function AuthPage() {
                       </div>
                     </>
                   )}
-
                   {/* Employee Step 1 Form */}
                   {formData.role === "employee" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
                       <div className="space-y-2">
                         <Label
-                          htmlFor="orgDropdown"
+                          htmlFor="signupName"
                           className="text-slate-900 font-medium"
                         >
-                          Select Organization
-                        </Label>
-                        <select
-                          id="orgDropdown"
-                          className="w-full border-2 border-slate-900 focus:border-sky-900 rounded-lg bg-white h-10 px-3 outline-none font-medium transition-all text-sm appearance-none"
-                          value={selectedOrgId}
-                          onChange={(e) => setSelectedOrgId(e.target.value)}
-                        >
-                          <option value="" disabled>
-                            Choose your company...
-                          </option>
-                          {organizations.map((org) => (
-                            <option key={org._id} value={org._id}>
-                              {org.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="signupEmail"
-                          className="text-slate-900 font-medium"
-                        >
-                          Email Address
+                          Full Name
                         </Label>
                         <Input
-                          id="signupEmail"
-                          type="email"
-                          placeholder="name@example.com"
+                          id="signupName"
+                          placeholder="Your Full Name (Registered by HR)"
                           className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
-                          value={formData.signupEmail}
+                          value={formData.signupName}
                           onChange={handleInputChange}
-                          onBlur={handleEmailBlur}
                         />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="orgDropdown"
+                            className="text-slate-900 font-medium"
+                          >
+                            Select Organization
+                          </Label>
+                          <select
+                            id="orgDropdown"
+                            className="w-full border-2 border-slate-900 focus:border-sky-900 rounded-lg bg-white h-10 px-3 outline-none font-medium transition-all text-sm appearance-none"
+                            value={selectedOrgId}
+                            onChange={(e) => setSelectedOrgId(e.target.value)}
+                          >
+                            <option value="" disabled>
+                              Choose your company...
+                            </option>
+                            {organizations.map((org) => (
+                              <option key={org._id} value={org._id}>
+                                {org.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="signupEmail"
+                            className="text-slate-900 font-medium"
+                          >
+                            Email Address
+                          </Label>
+                          <Input
+                            id="signupEmail"
+                            type="email"
+                            placeholder="name@example.com"
+                            className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white"
+                            value={formData.signupEmail}
+                            onChange={handleInputChange}
+                            onBlur={handleEmailBlur}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -787,6 +853,7 @@ export default function AuthPage() {
 
                   <div className="flex justify-center">
                     <button
+                      type="button"
                       onClick={() => setSignupStep(1)}
                       className="text-sm text-slate-500 hover:text-sky-900 font-medium underline"
                     >
@@ -794,12 +861,44 @@ export default function AuthPage() {
                     </button>
                   </div>
                 </div>
-              ) : (
-                /* Step 3 (Only Employee - Settle Gender and Password) */
+              ) : signupStep === 3 ? (
+                /* Step 3 (Set Password Only for Employee) */
                 <div className="space-y-4">
                   <div className="text-center pb-2 border-b border-slate-900">
-                    <h3 className="text-lg font-bold text-slate-900">Settle Up Your Credentials</h3>
-                    <p className="text-xs text-slate-500">Secure your newly validated employee account</p>
+                    <h3 className="text-lg font-bold text-slate-900">Set Up Your Password</h3>
+                    <p className="text-xs text-slate-500">Choose a secure password for your new account</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="signupPassword"
+                      className="text-slate-900 font-medium"
+                    >
+                      Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="signupPassword"
+                        type={showPassword ? "text" : "password"}
+                        className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white w-full"
+                        value={formData.signupPassword}
+                        onChange={handleInputChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={togglePasswordVisibility}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Step 4 (Employee Additional Profile Details) */
+                <div className="space-y-4">
+                  <div className="text-center pb-2 border-b border-slate-900">
+                    <h3 className="text-lg font-bold text-slate-900">Additional Profile Details</h3>
+                    <p className="text-xs text-slate-500">Set up your gender and upload a profile photo</p>
                   </div>
                   {avatarPreview && (
                     <div className="flex justify-center mb-6">
@@ -814,30 +913,6 @@ export default function AuthPage() {
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="signupPassword"
-                        className="text-slate-900 font-medium"
-                      >
-                        Set Password
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="signupPassword"
-                          type={showPassword ? "text" : "password"}
-                          className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white w-full"
-                          value={formData.signupPassword}
-                          onChange={handleInputChange}
-                        />
-                        <button
-                          type="button"
-                          onClick={togglePasswordVisibility}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                        >
-                          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                    </div>
                     <div className="space-y-2">
                       <Label
                         htmlFor="gender"
@@ -877,9 +952,6 @@ export default function AuthPage() {
                         <span className="text-xs font-bold text-slate-800 truncate max-w-xs">
                           {avatarFile ? avatarFile.name : "Choose profile image..."}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          PNG, JPG up to 1MB
-                        </span>
                       </label>
                       <input
                         id="employeeAvatarFile"
@@ -888,9 +960,6 @@ export default function AuthPage() {
                         className="hidden"
                         onChange={handleAvatarChange}
                       />
-                      {avatarFile && (
-                        <p className="text-xs text-emerald-600 font-semibold text-center mt-1 flex items-center justify-center gap-1">✓ Profile image selected</p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -906,6 +975,8 @@ export default function AuthPage() {
                     ? "Get Verification Code"
                     : signupStep === 2
                     ? (formData.role === "employee" ? "Verify Code" : "Verify & Create Account")
+                    : signupStep === 3
+                    ? "Next Step"
                     : "Complete Registration"}
                 </button>
               )}

@@ -94,6 +94,7 @@ export async function POST(req: Request) {
             existingUser.password = hashedPassword;
             existingUser.status = "active";
             if (gender) existingUser.gender = gender;
+            if (avatar) existingUser.avatar = avatar;
             await existingUser.save();
 
             return NextResponse.json(

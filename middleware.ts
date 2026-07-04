@@ -13,7 +13,7 @@ export default withAuth(
 
         if (!isAuth) {
             const url = req.nextUrl.clone();
-            url.pathname = "/auth/signin";
+            url.pathname = "/auth";
             url.search = "";
             return NextResponse.redirect(url);
         }
@@ -24,7 +24,7 @@ export default withAuth(
             authorized: () => true,
         },
         pages: {
-            signIn: "/auth/signin",
+            signIn: "/auth",
         },
     }
 );

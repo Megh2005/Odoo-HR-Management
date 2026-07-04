@@ -32,6 +32,18 @@ export async function POST(req: Request) {
                     { status: 400 }
                 );
             }
+            if (!name) {
+                return NextResponse.json(
+                    { message: "Name is required." },
+                    { status: 400 }
+                );
+            }
+            if (existingUser.name.trim().toLowerCase() !== name.trim().toLowerCase()) {
+                return NextResponse.json(
+                    { message: "The name entered does not match the record registered by your HR." },
+                    { status: 400 }
+                );
+            }
             if (!organizationId) {
                 return NextResponse.json(
                     { message: "Please select your organization." },

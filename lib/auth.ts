@@ -1,13 +1,13 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { getUserByEmail, verifyPassword } from "@/lib/services";
+import { getUserByEmailOrEmployeeId, verifyPassword } from "@/lib/services";
 
 export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                email: { label: "Email", type: "email" },
+                email: { label: "Email or Employee ID", type: "text" },
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
@@ -15,7 +15,7 @@ export const authOptions: NextAuthOptions = {
                     throw new Error("Invalid credentials");
                 }
 
-                const user = await getUserByEmail(credentials.email);
+                const user = await getUserByEmailOrEmployeeId(credentials.email);
 
                 if (!user) {
                     throw new Error("Invalid credentials");

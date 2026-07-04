@@ -8,6 +8,17 @@ export async function getUserByEmail(email: string) {
     return user;
 }
 
+export async function getUserByEmailOrEmployeeId(identifier: string) {
+    await connectToDatabase();
+    const user = await User.findOne({
+        $or: [
+            { email: identifier.trim() },
+            { employeeId: identifier.trim().toUpperCase() }
+        ]
+    });
+    return user;
+}
+
 export async function getUserById(id: string) {
     await connectToDatabase();
     const user = await User.findById(id);
