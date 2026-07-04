@@ -17,7 +17,6 @@ const UserSchema = new mongoose.Schema(
         },
         avatar: {
             type: String,
-            default: "https://robohash.org/hrspecs",
         },
         gender: {
             type: String,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteImage } from '@/lib/cloudinary';
+import { deleteImage } from '@/lib/imagekit';
 
 export async function DELETE(request: NextRequest) {
     try {
@@ -30,7 +30,7 @@ export async function DELETE(request: NextRequest) {
             } else if (deleteResult.result === 'ignored') {
                 return NextResponse.json({
                     success: true,
-                    message: 'Image ignored (not cloudinary)',
+                    message: 'Image ignored (not ImageKit)',
                 });
             } else {
                 return NextResponse.json(
@@ -46,9 +46,9 @@ export async function DELETE(request: NextRequest) {
         }
 
     } catch (error) {
-        console.error('Cloudinary delete error:', error);
+        console.error('ImageKit delete error:', error);
         return NextResponse.json(
-            { error: 'Failed to delete image from Cloudinary' },
+            { error: 'Failed to delete image from ImageKit' },
             { status: 500 }
         );
     }

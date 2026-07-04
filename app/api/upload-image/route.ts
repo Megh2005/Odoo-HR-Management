@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
-
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-    api_secret: process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET,
-});
+import { imagekit } from '@/lib/imagekit';
 
 export async function POST(request: NextRequest) {
     try {
         // Check if all required environment variables are present
-        if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || !process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || !process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET) {
+        if (!process.env.IMAGEKIT_PUBLIC_KEY || !process.env.IMAGEKIT_PRIVATE_KEY || !process.env.IMAGEKIT_URL_ENDPOINT) {
             return NextResponse.json(
-                { error: 'Missing required Cloudinary configuration' },
+                { error: 'Missing required ImageKit configuration' },
                 { status: 500 }
             );
         }
@@ -48,41 +41,26 @@ export async function POST(request: NextRequest) {
         // Convert file to buffer
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
+        const fileName = file.name || `image_${Date.now()}`;
 
-        // Upload to Cloudinary using a promise wrapper
-        const uploadResult = await new Promise((resolve, reject) => {
-            cloudinary.uploader.upload_stream(
-                {
-                    resource_type: 'auto',
-                    folder: folder,
-                    // Optional: Add transformations
-                    transformation: [
-                        { width: 500, height: 500, crop: 'limit' },
-                        { quality: 'auto' },
-                        { fetch_format: 'auto' }
-                    ]
-                },
-                (error, result) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve(result);
-                    }
-                }
-            ).end(buffer);
+        // Upload to ImageKit
+        const uploadResult = await imagekit.files.upload({
+            file: buffer.toString('base64'),
+            fileName: fileName,
+            folder: folder,
         });
 
         return NextResponse.json({
-            secure_url: (uploadResult as any).secure_url,
-            public_id: (uploadResult as any).public_id,
-            width: (uploadResult as any).width,
-            height: (uploadResult as any).height,
+            secure_url: uploadResult.url || '',
+            public_id: uploadResult.fileId || '',
+            width: uploadResult.width || 0,
+            height: uploadResult.height || 0,
         });
 
     } catch (error) {
-        console.error('Cloudinary upload error:', error);
+        console.error('ImageKit upload error:', error);
         return NextResponse.json(
-            { error: 'Failed to upload image to Cloudinary' },
+            { error: 'Failed to upload image to ImageKit' },
             { status: 500 }
         );
     }
