@@ -96,7 +96,9 @@ export default function Dashboard() {
 
   const fetchAttendance = async () => {
     try {
-      const res = await fetch("/api/attendance");
+      const res = await fetch("/api/attendance", {
+        cache: "no-store"
+      });
       if (res.ok) {
         const data = await res.json();
         setAttendanceRecords(data.records || []);
@@ -115,14 +117,15 @@ export default function Dashboard() {
     }
   }, [status, session]);
 
-  // Live Check-in Session Timer
+  // Live Check-in Session Timer - Update every 2 minutes and save to database
   useEffect(() => {
     if (!todayRecord || !todayRecord.checkIn || todayRecord.checkOut) {
       setSessionTime("");
       return;
     }
 
-    const interval = setInterval(() => {
+    // Function to update timer and calculate working hours
+    const updateSessionTimer = () => {
       const checkInTime = new Date(todayRecord.checkIn).getTime();
       const diffMs = Date.now() - checkInTime;
       
@@ -132,9 +135,50 @@ export default function Dashboard() {
 
       const formatted = `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
       setSessionTime(formatted);
+
+      // Calculate working hours in decimal format
+      const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
+      
+      return totalWorkingHours;
+    };
+
+    // Function to save working hours to database every 2 minutes
+    const saveWorkingHours = async (workingHours: number) => {
+      try {
+        await fetch("/api/attendance/update-hours", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            recordId: todayRecord.id,
+            workingHours 
+          }),
+          cache: "no-store"
+        });
+      } catch (error) {
+        console.error("Failed to save working hours:", error);
+      }
+    };
+
+    // Set initial timer immediately
+    const workingHours = updateSessionTimer();
+
+    // Update timer every second for display
+    const timerInterval = setInterval(() => {
+      updateSessionTimer();
     }, 1000);
 
-    return () => clearInterval(interval);
+    // Save working hours to database every 2 minutes (120000 ms)
+    const saveInterval = setInterval(() => {
+      const checkInTime = new Date(todayRecord.checkIn).getTime();
+      const diffMs = Date.now() - checkInTime;
+      const totalWorkingHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
+      saveWorkingHours(totalWorkingHours);
+    }, 120000); // 2 minutes
+
+    return () => {
+      clearInterval(timerInterval);
+      clearInterval(saveInterval);
+    };
   }, [todayRecord]);
 
   const handleAttendanceAction = async (action: "checkin" | "checkout") => {
@@ -143,12 +187,16 @@ export default function Dashboard() {
       const res = await fetch("/api/attendance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ action }),
+        cache: "no-store"
       });
 
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message || "Attendance updated!");
+        // Immediately update state with the new record
+        setTodayRecord(data.record);
+        // Also refetch all attendance to ensure latest data
         fetchAttendance();
       } else {
         toast.error(data.message || "Action failed");
