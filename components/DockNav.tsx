@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, User, LogIn, LogOut, Building, LayoutDashboard, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -12,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { MdHome, MdDashboard, MdPerson, MdBusiness, MdGroup, MdLogin, MdLogout } from "react-icons/md";
 
 export default function DockNav() {
   const { data: session, status } = useSession();
@@ -23,82 +23,106 @@ export default function DockNav() {
   const navItems = [
     {
       name: "Home",
-      icon: Home,
+      icon: MdHome,
       href: "/",
       show: true,
     },
     {
       name: "Dashboard",
-      icon: LayoutDashboard,
+      icon: MdDashboard,
       href: "/dashboard",
       show: status === "authenticated",
     },
     {
-      name: "Profile",
-      icon: User,
-      href: "/profile",
-      show: status === "authenticated",
-    },
-    {
-      name: hasOrg ? "Org Dashboard" : (isHR ? "Create Org" : "Organization"),
-      icon: Building,
-      href: hasOrg ? "/organization/dashboard" : (isHR ? "/organization/create" : "/organization/dashboard"),
-      show: status === "authenticated",
-    },
-    {
       name: "Employees",
-      icon: Users,
+      icon: MdGroup,
       href: "/employees",
       show: status === "authenticated" && isHR,
     },
     {
+      name: hasOrg ? "Org Dashboard" : (isHR ? "Create Org" : "Organization"),
+      icon: MdBusiness,
+      href: hasOrg ? "/organization/dashboard" : (isHR ? "/organization/create" : "/organization/dashboard"),
+      show: status === "authenticated",
+    },
+    {
       name: "Sign Up",
-      icon: LogIn,
+      icon: MdLogin,
       href: "/auth",
       show: status === "unauthenticated",
     },
   ];
 
+  const authItems = [
+    {
+      name: "Profile",
+      icon: MdPerson,
+      href: "/profile",
+      show: status === "authenticated",
+    },
+    {
+      name: "Logout",
+      icon: MdLogout,
+      href: "#",
+      show: status === "authenticated",
+      isLogout: true,
+    },
+  ];
+
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="flex items-center gap-4 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border-2 border-slate-900 shadow-xl dark:bg-black/80 dark:border-slate-100">
-        {navItems.map((item, index) => {
-          if (!item.show) return null;
-          const isActive = pathname === item.href;
+      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-3 rounded-full border-2 border-slate-900 shadow-2xl">
+        {/* Main Navigation Items */}
+        <div className="flex items-center gap-2">
+          {navItems.map((item, index) => {
+            if (!item.show) return null;
+            const isActive = pathname === item.href;
 
-          return (
-            <Tooltip key={item.name}>
-              <TooltipTrigger asChild>
-                <Link href={item.href}>
-                  <DockItem item={item} isActive={isActive} isButton={false} />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{item.name}</p>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
+            return (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>
+                  <Link href={item.href}>
+                    <DockItem item={item} isActive={isActive} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-bold text-xs">
+                  <p>{item.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
 
+        {/* Vertical Separator */}
         {status === "authenticated" && (
-          <>
-            <div className="w-[2px] h-6 bg-black dark:bg-white mx-2" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button onClick={() => signOut()}>
-                  <DockItem
-                    item={{ name: "Logout", icon: LogOut }}
-                    isActive={false}
-                    isButton
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Logout</p>
-              </TooltipContent>
-            </Tooltip>
-          </>
+          <div className="w-[1.5px] h-8 bg-slate-300 mx-1" />
         )}
+
+        {/* Auth Items (Profile + Logout) */}
+        <div className="flex items-center gap-2">
+          {authItems.map((item) => {
+            if (!item.show) return null;
+
+            return (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>
+                  {item.isLogout ? (
+                    <button onClick={() => signOut()}>
+                      <DockItem item={item} isActive={false} isLogout={true} />
+                    </button>
+                  ) : (
+                    <Link href={item.href}>
+                      <DockItem item={item} isActive={pathname === item.href} />
+                    </Link>
+                  )}
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-bold text-xs">
+                  <p>{item.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -107,34 +131,34 @@ export default function DockNav() {
 function DockItem({
   item,
   isActive,
-  isButton = false,
+  isLogout = false,
 }: {
   item: any;
   isActive: boolean;
-  isButton?: boolean;
+  isLogout?: boolean;
 }) {
   const Icon = item.icon;
 
   return (
     <div className="relative flex flex-col items-center justify-center">
       <motion.div
-        whileHover={{ scale: 1 }}
+        whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         className={cn(
-          "p-3 rounded-full transition-colors",
+          "p-2.5 rounded-lg transition-all duration-200",
           isActive
-            ? "bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100"
-            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
-          isButton &&
-            "text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20",
+            ? "bg-sky-100 text-sky-900 border border-sky-300"
+            : "text-slate-600 hover:text-sky-900 hover:bg-sky-50",
+          isLogout &&
+            "text-red-500 hover:text-red-700 hover:bg-red-50 border hover:border-red-300",
         )}
       >
-        <Icon size={24} />
+        <Icon size={20} />
       </motion.div>
-      {isActive && (
+      {isActive && !isLogout && (
         <motion.div
           layoutId="activeDot"
-          className="absolute -bottom-1 w-1 h-1 rounded-full bg-sky-900 dark:bg-sky-400"
+          className="absolute -bottom-1.5 w-1.5 h-1.5 rounded-full bg-sky-900"
         />
       )}
     </div>

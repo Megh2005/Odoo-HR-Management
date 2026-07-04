@@ -67,9 +67,9 @@ export default function Home() {
             {/* Main Heading */}
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-slate-900 tracking-tight leading-tight">
-                Manage Your Workforce <br />
-                <span className="bg-gradient-to-r from-sky-900 to-slate-700 bg-clip-text text-transparent">
-                  Effortlessly
+                Manage Your Workforce with <br />
+                <span className="bg-gradient-to-r from-sky-900 to-sky-700 bg-clip-text text-transparent">
+                  HRNode
                 </span>
               </h1>
               <p className="text-lg sm:text-xl text-slate-600 font-medium max-w-2xl mx-auto leading-relaxed">
