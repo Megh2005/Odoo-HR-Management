@@ -308,12 +308,13 @@ export const sendLeaveRequestEmail = async (org: any, employee: any, leaveReques
       day: "numeric",
     });
 
-    const leaveTypeLabel = {
+    const leaveTypeLabels: Record<string, string> = {
       casual: "Casual Leave",
       medical: "Medical Leave",
       maternity: "Maternity Leave",
       other: "Other Leave",
-    }[leaveRequest.leaveType] || leaveRequest.leaveType;
+    };
+    const leaveTypeLabel = leaveTypeLabels[leaveRequest.leaveType] || leaveRequest.leaveType;
 
     // Get all HR users in organization
     const { collection, query, where, getDocs } = await import("firebase/firestore");
@@ -429,12 +430,13 @@ export const sendLeaveResponseEmail = async (orgId: string, employee: any, leave
       day: "numeric",
     });
 
-    const leaveTypeLabel = {
+    const leaveTypeLabels: Record<string, string> = {
       casual: "Casual Leave",
       medical: "Medical Leave",
       maternity: "Maternity Leave",
       other: "Other Leave",
-    }[leaveRequest.leaveType] || leaveRequest.leaveType;
+    };
+    const leaveTypeLabel = leaveTypeLabels[leaveRequest.leaveType] || leaveRequest.leaveType;
 
     const statusColor = status === "approved" ? "#059669" : "#dc2626";
     const statusBg = status === "approved" ? "#ecfdf5" : "#fef2f2";
