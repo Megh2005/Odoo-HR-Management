@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import Attendance from "@/models/Attendance";
 import User from "@/models/User";
+import Organization from "@/models/Organization";
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,31 @@ export async function POST(req: Request) {
         if (action === "checkin") {
             if (record) {
                 return NextResponse.json({ message: "Already checked in today" }, { status: 400 });
+            }
+
+            // Verify check-in window settings if organization is linked
+            if (user.organizationId) {
+                const org = await Organization.findById(user.organizationId);
+                if (org) {
+                    const startVal = org.checkInStart || "09:00";
+                    const endVal = org.checkInEnd || "11:00";
+
+                    const [startH, startM] = startVal.split(":").map(Number);
+                    const [endH, endM] = endVal.split(":").map(Number);
+
+                    const currentH = now.getHours();
+                    const currentM = now.getMinutes();
+
+                    const currentTotal = currentH * 60 + currentM;
+                    const startTotal = startH * 60 + startM;
+                    const endTotal = endH * 60 + endM;
+
+                    if (currentTotal < startTotal || currentTotal > endTotal) {
+                        return NextResponse.json({
+                            message: `The check-in portal is closed. It is only open between ${startVal} and ${endVal}.`
+                        }, { status: 400 });
+                    }
+                }
             }
 
             record = new Attendance({

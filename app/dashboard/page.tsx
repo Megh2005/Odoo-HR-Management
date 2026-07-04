@@ -22,6 +22,8 @@ import {
   ShieldAlert
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -33,6 +35,11 @@ export default function Dashboard() {
   const [todayRecord, setTodayRecord] = useState<any>(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
+
+  // Check-In window states for HR settings
+  const [checkInStart, setCheckInStart] = useState("09:00");
+  const [checkInEnd, setCheckInEnd] = useState("11:00");
+  const [savingTimeline, setSavingTimeline] = useState(false);
 
   // Timer state for active check-in session duration
   const [sessionTime, setSessionTime] = useState("");
@@ -49,6 +56,10 @@ export default function Dashboard() {
           if (empRes.ok) {
             const eData = await empRes.json();
             setEmployees(eData);
+          }
+          if (pData.organizationId) {
+            setCheckInStart(pData.organizationId.checkInStart || "09:00");
+            setCheckInEnd(pData.organizationId.checkInEnd || "11:00");
           }
         } else {
           // Employee - fetch attendance logs
@@ -128,6 +139,30 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveTimeline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingTimeline(true);
+    try {
+      const res = await fetch("/api/organization/update-timeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkInStart, checkInEnd })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Timeline updated successfully!");
+        fetchData(); // Reload organization details
+      } else {
+        toast.error(data.message || "Failed to update timeline");
+      }
+    } catch (error) {
+      toast.error("Failed to update timeline");
+    } finally {
+      setSavingTimeline(false);
+    }
+  };
+
   if (status === "loading" || fetchingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -147,6 +182,26 @@ export default function Dashboard() {
   const totalHours = attendanceRecords.reduce((sum, r) => sum + (r.workingHours || 0), 0);
   const avgHours = totalPresentDays > 0 ? (totalHours / totalPresentDays).toFixed(1) : "0";
 
+  // Check if check-in is currently open (client-side validator)
+  const orgStart = organization?.checkInStart || "09:00";
+  const orgEnd = organization?.checkInEnd || "11:00";
+
+  const getPortalStatus = () => {
+    const now = new Date();
+    const currentH = now.getHours();
+    const currentM = now.getMinutes();
+    const currentTotal = currentH * 60 + currentM;
+
+    const [startH, startM] = orgStart.split(":").map(Number);
+    const [endH, endM] = orgEnd.split(":").map(Number);
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+
+    return currentTotal >= startTotal && currentTotal <= endTotal;
+  };
+
+  const isPortalOpen = getPortalStatus();
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-start py-12 px-4 md:px-8 pb-32">
       <BackgroundPattern />
@@ -164,7 +219,7 @@ export default function Dashboard() {
               />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-1.5">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-1.5 font-sans">
                 Welcome back, {userData.name}! <Sparkles className="h-5 w-5 text-amber-500 animate-spin-slow" />
               </h2>
               <p className="text-xs text-slate-500 font-bold capitalize">Role: {userData.role === "hr" ? "HR Officer" : "Employee Workspace"}</p>
@@ -203,7 +258,7 @@ export default function Dashboard() {
             <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 flex flex-col justify-between">
               <div>
                 <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-4">HR Controls Panel</h3>
-                <p className="text-xs text-slate-500 font-semibold mb-4 leading-relaxed">
+                <p className="text-xs text-slate-500 font-semibold mb-4 leading-relaxed font-sans">
                   Manage organization settings, register new team members, track pre-activation links, and monitor employee databases.
                 </p>
               </div>
@@ -224,6 +279,56 @@ export default function Dashboard() {
                 </button>
               </div>
             </Card>
+
+            {/* Attendance Portal Check-In Timeline Settings */}
+            {organization && (
+              <Card className="border-2 border-slate-900 bg-white/95 shadow rounded-xl p-5 md:col-span-2">
+                <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-sky-900" />
+                  <span>Check-In Shift Timeline Control</span>
+                </h3>
+                <form onSubmit={handleSaveTimeline} className="space-y-4">
+                  <p className="text-xs text-slate-500 font-semibold leading-relaxed font-sans">
+                    Define the daily time window during which the employee check-in portal remains open. Outside this range, the check-in action is automatically closed.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="checkInStart" className="text-slate-950 font-bold text-xs">
+                        Start Check-In Window (HH:MM)
+                      </Label>
+                      <Input
+                        id="checkInStart"
+                        type="time"
+                        className="border-2 border-slate-900 bg-white h-11"
+                        value={checkInStart}
+                        onChange={(e) => setCheckInStart(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="checkInEnd" className="text-slate-950 font-bold text-xs">
+                        End Check-In Window (HH:MM)
+                      </Label>
+                      <Input
+                        id="checkInEnd"
+                        type="time"
+                        className="border-2 border-slate-900 bg-white h-11"
+                        value={checkInEnd}
+                        onChange={(e) => setCheckInEnd(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={savingTimeline}
+                    className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 font-bold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 hover:shadow transition-all text-xs disabled:opacity-70 active:scale-95"
+                  >
+                    {savingTimeline ? "Saving Settings..." : "Save Shift Time Window"}
+                  </button>
+                </form>
+              </Card>
+            )}
 
           </div>
         )}
@@ -279,15 +384,28 @@ export default function Dashboard() {
                 )}
 
                 {/* Status message */}
-                <div className="text-xs font-bold text-slate-700">
+                <div className="text-xs font-bold text-slate-700 space-y-3">
                   {!todayRecord ? (
-                    <p className="text-slate-500">You are not checked in for today.</p>
+                    <>
+                      <p className="text-slate-500">You are not checked in for today.</p>
+                      {!isPortalOpen && (
+                        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-3 text-left text-amber-800 text-xs font-semibold flex items-start gap-2">
+                          <ShieldAlert className="h-4.5 w-4.5 text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold">Check-In Window Closed</p>
+                            <p className="text-[10px] text-amber-700 mt-0.5 leading-relaxed font-sans">
+                              The check-in portal is only open between <span className="underline font-bold">{orgStart}</span> and <span className="underline font-bold">{orgEnd}</span>.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   ) : todayRecord.checkOut ? (
                     <p className="text-slate-800">
                       Shift completed today! (Logged hours: <span className="text-sky-900">{todayRecord.workingHours}h</span>)
                     </p>
                   ) : (
-                    <p className="text-emerald-600 flex items-center justify-center gap-1">
+                    <p className="text-emerald-600 flex items-center justify-center gap-1 font-sans">
                       ● Currently Checked In (Shift in progress)
                     </p>
                   )}
@@ -296,13 +414,22 @@ export default function Dashboard() {
                 {/* Control Action Button */}
                 <div className="pt-2">
                   {!todayRecord ? (
-                    <button
-                      onClick={() => handleAttendanceAction("checkin")}
-                      disabled={loadingAction}
-                      className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-slate-900 shadow hover:shadow-md transition-all active:scale-95 text-xs disabled:opacity-50"
-                    >
-                      <Play className="h-4 w-4 fill-white" /> Check In Today
-                    </button>
+                    isPortalOpen ? (
+                      <button
+                        onClick={() => handleAttendanceAction("checkin")}
+                        disabled={loadingAction}
+                        className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-slate-900 shadow hover:shadow-md transition-all active:scale-95 text-xs disabled:opacity-50"
+                      >
+                        <Play className="h-4 w-4 fill-white" /> Check In Today
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-extrabold bg-slate-100 text-slate-400 border-2 border-slate-300 transition-all text-xs cursor-not-allowed"
+                      >
+                        Check-In Closed
+                      </button>
+                    )
                   ) : todayRecord.checkOut ? (
                     <button
                       disabled
@@ -362,7 +489,6 @@ export default function Dashboard() {
                       {attendanceRecords.map((record, index) => {
                         const dateObj = new Date(record.date);
                         const dayNum = dateObj.getDate();
-                        const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
 
                         let colorClass = "bg-slate-50 border-slate-200 text-slate-400";
                         if (record.status === "present") {

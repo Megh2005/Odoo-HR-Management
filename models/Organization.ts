@@ -22,6 +22,14 @@ const OrganizationSchema = new mongoose.Schema(
             ref: "User",
             required: true,
         },
+        checkInStart: {
+            type: String,
+            default: "09:00",
+        },
+        checkInEnd: {
+            type: String,
+            default: "11:00",
+        },
     },
     {
         timestamps: true,

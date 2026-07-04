@@ -18,6 +18,7 @@ import {
   VenusAndMars,
   MapPinned,
   Mail,
+  Upload,
 } from "lucide-react";
 
 import { indianStatesAndCities } from "@/lib/states";
@@ -35,6 +36,21 @@ export default function ProfilePage() {
     city: "",
     pincode: "",
   });
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  const handleProfileAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      toast.error("Avatar image must be less than 1MB");
+      return;
+    }
+
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
 
   const availableStates = Object.keys(indianStatesAndCities).sort();
   const availableCities = formData.state
@@ -86,11 +102,6 @@ export default function ProfilePage() {
   if (!session?.user) return null;
 
   const handleSave = async () => {
-    if (!formData.name.trim()) {
-      toast.error("Name cannot be empty");
-      return;
-    }
-
     if (formData.state && formData.city && formData.pincode) {
       const validation = validatePincode(
         formData.state,
@@ -105,15 +116,34 @@ export default function ProfilePage() {
 
     setLoading(true);
     try {
+      let uploadedAvatarUrl = userData?.avatar || "";
+
+      if (avatarFile) {
+        const fileFormData = new FormData();
+        fileFormData.append("file", avatarFile);
+
+        const uploadRes = await fetch("/api/upload-image", {
+          method: "POST",
+          body: fileFormData,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload profile image");
+        }
+
+        const uploadData = await uploadRes.json();
+        uploadedAvatarUrl = uploadData.secure_url;
+      }
+
       const res = await fetch("/api/profile/update", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.name,
           gender: formData.gender,
           state: formData.state,
           city: formData.city,
           pincode: formData.pincode,
+          avatar: uploadedAvatarUrl || undefined,
         }),
       });
 
@@ -126,7 +156,10 @@ export default function ProfilePage() {
       await update();
 
       toast.success("Profile updated successfully!");
+      setAvatarFile(null);
+      setAvatarPreview("");
       setIsEditing(false);
+      fetchUserData();
     } catch (error: any) {
       toast.error(error.message || "Failed to update profile");
     } finally {
@@ -142,6 +175,8 @@ export default function ProfilePage() {
       city: userData?.city || "",
       pincode: userData?.pincode || "",
     });
+    setAvatarPreview("");
+    setAvatarFile(null);
     setIsEditing(false);
   };
 
@@ -155,21 +190,52 @@ export default function ProfilePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6 pt-2">
-          <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-slate-900 shadow-md shrink-0">
-            {session.user.image || (session.user as any).avatar ? (
-              <Image
-                src={
-                  session.user.image ||
-                  (session.user as any).avatar ||
-                  "https://robohash.org/placeholder"
-                }
-                alt="Avatar"
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="h-full w-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-3xl">
-                {session.user.name?.[0]?.toUpperCase()}
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-slate-900 shadow-md shrink-0 bg-white">
+              {avatarPreview ? (
+                <Image
+                  src={avatarPreview}
+                  alt="Avatar Preview"
+                  fill
+                  className="object-cover"
+                />
+              ) : session.user.image || (session.user as any).avatar ? (
+                <Image
+                  src={
+                    session.user.image ||
+                    (session.user as any).avatar ||
+                    "https://robohash.org/placeholder"
+                  }
+                  alt="Avatar"
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-3xl">
+                  {session.user.name?.[0]?.toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {isEditing && (
+              <div className="flex flex-col items-center gap-1">
+                <label
+                  htmlFor="profileAvatarUploader"
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold bg-sky-900 text-white hover:bg-sky-800 border-2 border-slate-900 cursor-pointer shadow-sm hover:shadow active:scale-95 transition-all"
+                >
+                  <Upload size={12} />
+                  Change Avatar
+                </label>
+                <input
+                  id="profileAvatarUploader"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfileAvatarChange}
+                />
+                {avatarFile && (
+                  <span className="text-[9px] text-emerald-600 font-bold">✓ Selected: {avatarFile.name}</span>
+                )}
               </div>
             )}
           </div>
@@ -187,11 +253,12 @@ export default function ProfilePage() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    className="border-2 border-slate-900 focus-visible:ring-0 focus-visible:border-sky-900 rounded-lg bg-white font-medium text-slate-900"
+                    disabled
+                    className="border-2 border-slate-300 rounded-lg bg-slate-50 text-slate-500 font-medium cursor-not-allowed"
                   />
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Name cannot be changed
+                  </p>
                 </div>
 
                 <div className="space-y-2">
