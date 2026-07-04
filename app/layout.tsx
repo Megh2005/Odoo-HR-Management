@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Texturina } from "next/font/google";
+import { Roboto_Slab } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Slide, ToastContainer } from "react-toastify";
@@ -10,9 +10,10 @@ import { AuthProvider } from "@/components/Providers";
 import BackgroundPattern from "@/components/BackgroundPattern";
 import DockNav from "@/components/DockNav";
 
-const winkRough = Texturina({
+const robotoSlab = Roboto_Slab({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-roboto-slab",
 });
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${winkRough.className} relative`}>
+      <body className={`${robotoSlab.className} relative`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
