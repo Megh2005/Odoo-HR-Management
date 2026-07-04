@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
 import Organization from "@/models/Organization";
+import { sendOrganizationCreationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
     try {
@@ -56,6 +57,11 @@ export async function POST(req: Request) {
         // Update the HR User's organizationId
         hrUser.organizationId = newOrg._id;
         await hrUser.save();
+
+        // Dispatch details email to HR Officer
+        sendOrganizationCreationEmail(newOrg, hrUser).catch(err => {
+            console.error("Failed to send organization creation email:", err);
+        });
 
         return NextResponse.json(
             { message: "Organization created successfully", organization: newOrg },

@@ -148,3 +148,83 @@ export const sendOrderStatusUpdateEmail = async (order: any, user: any, estimate
     console.error("Error sending status email:", error);
   }
 };
+
+export const sendOrganizationCreationEmail = async (org: any, hrUser: any) => {
+  try {
+    let fieldsList: any[] = [];
+    if (org.fields && Array.isArray(org.fields)) {
+      fieldsList = org.fields;
+    } else if (org.additionalInfo) {
+      const infoObj = typeof org.additionalInfo.toObject === 'function'
+        ? org.additionalInfo.toObject()
+        : org.additionalInfo;
+      fieldsList = Object.entries(infoObj).map(([key, value]) => ({ key, value }));
+    }
+
+    const customFieldsHtml = fieldsList.length > 0
+      ? fieldsList.map((f: any) => `
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px; font-weight: bold; color: #334155; width: 40%;">${f.key}</td>
+            <td style="padding: 10px; color: #475569;">${f.value}</td>
+          </tr>
+        `).join("")
+      : "";
+
+    const logoHtml = org.logo
+      ? `<div style="text-align: center; margin-bottom: 20px;">
+          <img src="${org.logo}" alt="${org.name} Logo" style="max-width: 120px; max-height: 120px; border-radius: 12px; border: 2px solid #0f172a; object-fit: cover;" />
+         </div>`
+      : "";
+
+    const mailOptions = {
+      from: `"HR Management" <${process.env.SMTP_USER}>`,
+      to: hrUser.email,
+      subject: `Organization Created - ${org.name}`,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #0f172a; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+          <div style="background-color: #0c4a6e; padding: 30px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 26px; font-weight: bold; letter-spacing: -0.5px;">Organization Setup Complete</h1>
+            <p style="margin: 10px 0 0; font-size: 15px; color: #bae6fd;">Your workspace is ready to onboard employees.</p>
+          </div>
+          
+          <div style="padding: 30px;">
+            <p style="font-size: 16px; color: #0f172a; margin-top: 0;">Hello <strong>${hrUser.name}</strong>,</p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.5;">Your organization, <strong>${org.name}</strong>, has been successfully created. Below are the details configured for your workspace:</p>
+            
+            ${logoHtml}
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 25px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tbody>
+                  <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold; color: #334155; width: 40%;">Company Name</td>
+                    <td style="padding: 10px; color: #475569;">${org.name}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold; color: #334155;">Address</td>
+                    <td style="padding: 10px; color: #475569;">${org.address}</td>
+                  </tr>
+                  ${customFieldsHtml}
+                </tbody>
+              </table>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/organization/dashboard" style="background-color: #0c4a6e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; border: 2px solid #0f172a; display: inline-block;">Go to Organization Dashboard</a>
+            </div>
+          </div>
+
+          <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0 0 5px;">This is an automated notification regarding your HR management workspace.</p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} HRSpecs. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Organization confirmation email sent successfully to", hrUser.email);
+  } catch (error) {
+    console.error("Error sending organization creation email:", error);
+  }
+};

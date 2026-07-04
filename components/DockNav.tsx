@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, User, LogIn, LogOut } from "lucide-react";
+import { Home, User, LogIn, LogOut, Building } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +17,9 @@ export default function DockNav() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
 
+  const isHR = session?.user?.role === "hr";
+  const hasOrg = !!(session?.user as any)?.organizationId;
+
   const navItems = [
     {
       name: "Home",
@@ -28,6 +31,12 @@ export default function DockNav() {
       name: "Profile",
       icon: User,
       href: "/profile",
+      show: status === "authenticated",
+    },
+    {
+      name: hasOrg ? "Org Dashboard" : (isHR ? "Create Org" : "Organization"),
+      icon: Building,
+      href: hasOrg ? "/organization/dashboard" : (isHR ? "/organization/create" : "/organization/dashboard"),
       show: status === "authenticated",
     },
     {
